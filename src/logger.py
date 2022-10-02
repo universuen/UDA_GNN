@@ -1,13 +1,8 @@
-"""
-Using loggers in your project helps you develop more efficiently.
-"""
-from __future__ import annotations
-
 import logging
 import sys
 import os
 from pathlib import Path
-from warnings import warn
+from typing import Type
 
 from src import config
 
@@ -17,8 +12,12 @@ class Logger(logging.Logger):
             self,
             name: str,
             level: int | str = config.Logger.level,
-            logs_dir: Path = config.Logger.logs_path,
+            logs_dir: Path | None = None,
     ) -> None:
+        if logs_dir is None:
+            if config.config_name is None:
+                raise NotImplementedError('config_name is mandatory.')
+            logs_dir = config.Logger.logs_path / config.config_name
         super().__init__(name, level=level)
         # set format
         formatter = logging.Formatter(
@@ -34,8 +33,13 @@ class Logger(logging.Logger):
         logs_dir.mkdir(exist_ok=True)
         log_file = logs_dir / f'{name}.log'
         if os.path.exists(log_file):
-            warn(f'{log_file} already exists!')
+            self.warning(f'{log_file} already exists!')
         f_handler = logging.FileHandler(log_file)
         f_handler.setFormatter(formatter)
         f_handler.setLevel(config.Logger.level)
         self.addHandler(f_handler)
+
+    def log_config_info(self, config_cls: Type[config.Config]):
+        self.info(config_cls.__name__)
+        for k, v in config_cls.to_dict().items():
+            self.info(f'{k}: {v}')
