@@ -43,3 +43,7 @@ class Logger(logging.Logger):
         for k, v in config_cls.to_dict().items():
             self.info(f'{k}: {v}')
         self.info('*' * 100)
+
+    def log_all_config(self):
+        for i in config.get_all_configs():
+            self.log_config_info(i)

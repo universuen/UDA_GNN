@@ -149,3 +149,14 @@ class Logger(_Config):
     message_fmt: str = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
     level: int | str = logging.INFO
     date_fmt: str = '%Y-%m-%d %H:%M:%S'
+
+
+def get_all_configs() -> list[ConfigType]:
+    results = []
+    for i in vars().values():
+        try:
+            if issubclass(i, _Config):
+                results.append(i)
+        except TypeError:
+            pass
+    return results

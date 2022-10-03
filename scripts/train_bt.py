@@ -13,7 +13,7 @@ if __name__ == '__main__':
     # set config name
     config.config_name = 'barlow_twins_baseline'
     # set logger
-    logger = src.Logger('main')
+    logger = src.Logger(config.config_name)
     # set data loader
     loader = DataLoader(
         dataset=src.dataset.MoleculeAugDataset(
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     )
     model = src.model.pretraining.BarlowTwins().to(config.device)
     optimizer = torch.optim.Adam(model.parameters(), config.Pretraining.lr)
-    logger.log_config_info(config.Pretraining)
+    logger.log_all_config()
     loss_history = src.History('pretraining_losses')
     for e in range(config.Pretraining.epochs):
         for idx, (b1, b2, _) in enumerate(loader):
@@ -68,4 +68,5 @@ if __name__ == '__main__':
         config.seed = seed
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
+            logger.log_all_config()
             src.utils.tune(config.TuningDataset.dataset)

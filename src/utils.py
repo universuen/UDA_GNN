@@ -104,7 +104,6 @@ def eval_chem(model, loader):
     mean_roc = sum(roc_list) / len(roc_list)
     return mean_roc
 
-
 def tune(dataset_name: str):
     logger = _logger.Logger(f'tune_{dataset_name}')
     logger.info('Started Tuning')
