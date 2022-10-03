@@ -4,4 +4,4 @@ from src import model
 from src import utils
 from src.logger import Logger
 from src.molecule_dataset import MoleculeDataset
-from src.history import LossHistory
+from src.loss_history import LossHistory

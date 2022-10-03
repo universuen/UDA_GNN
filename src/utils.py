@@ -9,7 +9,6 @@ from src import config
 def set_debug_mode():
     print('**********DEBUG MODE IS ON!**********')
     config.config_name = 'debug'
-    config.device = 'cpu'
     config.Training.epochs = 1
     config.Training.batch_size = 32
     config.Logger.level = 'DEBUG'
@@ -20,7 +19,7 @@ def training_bar(epoch: int, idx: int, total: int, **kwargs):
     content = f'epoch {epoch + 1}:'
     for k, v in kwargs.items():
         content = ' '.join([content, f'[{k}:{v:.5f}]'])
-    content = ' '.join([content, f'[progress:{(idx + 1) * 100 / total:0>6.2%}]'])
+    content = ' '.join([content, f'[progress:{(idx + 1) / total:0>6.2%}]'])
     return content
 
 

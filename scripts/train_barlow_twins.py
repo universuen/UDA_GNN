@@ -14,7 +14,7 @@ if __name__ == '__main__':
     # set data loader
     loader = DataLoader(
         dataset=src.MoleculeDataset(),
-        batch_size=config.PretrainingDataLoader.batch_size,
+        batch_size=config.Training.batch_size,
         shuffle=config.PretrainingDataLoader.shuffle,
         num_workers=config.PretrainingDataLoader.num_workers,
         pin_memory=config.PretrainingDataLoader.pin_memory,

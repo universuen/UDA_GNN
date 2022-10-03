@@ -1,6 +1,8 @@
-from pathlib import Path
 import logging
+import sys
+from pathlib import Path
 from typing import Callable
+from importlib import reload
 
 from src._config import Config
 from src import utils
@@ -16,7 +18,7 @@ class Paths(Config):
     data: Path = project / 'data'
     scripts: Path = project / 'scripts'
     tests: Path = project / 'tests'
-    logs: Path = data / 'logs'
+    logs: Path | None = data / 'logs'
     datasets: Path = data / 'datasets'
     results: Path = data / 'results'
     models: Path = data / 'models'
@@ -66,7 +68,7 @@ class PretrainingDataset(Config):
 
 
 class PretrainingDataLoader(Config):
-    batch_size: int = Training.batch_size
+
     shuffle: bool = True
     num_workers: int = 4
     pin_memory: bool = True
@@ -95,4 +97,4 @@ class Logger(Config):
     message_fmt: str = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
     level: int | str = logging.INFO
     date_fmt: str = '%Y-%m-%d %H:%M:%S'
-    logs_path: Path = Paths.logs
+

@@ -17,7 +17,7 @@ class Logger(logging.Logger):
         if logs_dir is None:
             if config.config_name is None:
                 raise NotImplementedError('config_name is mandatory.')
-            logs_dir = config.Logger.logs_path / config.config_name
+            logs_dir = config.Paths.logs / config.config_name
         super().__init__(name, level=level)
         # set format
         formatter = logging.Formatter(
