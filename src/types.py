@@ -1,4 +1,5 @@
 from torch.nn import Module
+from torch_geometric.data import Data
 
 from src import logger
 from config import ConfigType

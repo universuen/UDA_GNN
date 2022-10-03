@@ -13,6 +13,7 @@ if __name__ == '__main__':
     """
     Pretraining
     """
+    src.utils.set_debug_mode()
     # set config name
     config.config_name = CONFIG_NAME
     # set device
@@ -22,15 +23,16 @@ if __name__ == '__main__':
     # set logger
     logger = src.Logger('main')
     # set data loader
+    dataset = src.dataset.IntegratedAugDataset(
+        datasets=['zinc_standard_agent', *config.datasets],
+        aug_1=config.PretrainingDataset.aug_1,
+        aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
+        aug_2=config.PretrainingDataset.aug_2,
+        aug_ratio_2=config.PretrainingDataset.aug_ratio_2,
+        use_original=config.PretrainingDataset.use_original,
+    )
     loader = DataLoader(
-        dataset=src.dataset.MoleculeAugDataset(
-            dataset=config.PretrainingDataset.dataset,
-            aug_1=config.PretrainingDataset.aug_1,
-            aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
-            aug_2=config.PretrainingDataset.aug_2,
-            aug_ratio_2=config.PretrainingDataset.aug_ratio_2,
-            use_original=config.PretrainingDataset.use_original,
-        ),
+        dataset=dataset,
         batch_size=config.Pretraining.batch_size,
         shuffle=True,
         num_workers=config.PretrainingLoader.num_workers,

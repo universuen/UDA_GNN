@@ -1,6 +1,6 @@
 import context
 
-from src import MoleculeDataset
+from src.dataset import MoleculeDataset
 
 if __name__ == '__main__':
     dataset = MoleculeDataset()

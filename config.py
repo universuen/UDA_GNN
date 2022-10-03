@@ -154,6 +154,8 @@ class Logger(_Config):
 
 
 _all_items = vars().values()
+
+
 def get_all_configs() -> list[ConfigType]:
     results = []
     for i in _all_items:
