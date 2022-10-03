@@ -13,7 +13,6 @@ if __name__ == '__main__':
     """
     Pretraining
     """
-    src.utils.set_debug_mode()
     # set config name
     config.config_name = CONFIG_NAME
     # set device
