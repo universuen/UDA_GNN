@@ -7,8 +7,9 @@ import config
 
 if __name__ == '__main__':
     config.config_name = 'test'
+    src.utils.set_seed(config.seed)
     dataset = src.dataset.IntegratedAugDataset(
-        datasets=config.datasets,
+        datasets=['zinc_standard_agent', *config.datasets],
         aug_1=config.PretrainingDataset.aug_1,
         aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
         aug_2=config.PretrainingDataset.aug_2,
@@ -18,7 +19,8 @@ if __name__ == '__main__':
     loader = DataLoader(
         dataset=dataset,
         batch_size=32,
-        shuffle=True,
+        shuffle=False,
         drop_last=True,
     )
-    print(next(iter(loader)))
+    for i in loader:
+        print(i)

@@ -29,7 +29,12 @@ class IntegratedAugDataset(Dataset):
     def __getitem__(self, item: int):
         for name, size in self.sizes.items():
             if item < size:
-                return self.datasets[name][item]
+                b1, b2, other = self.datasets[name][item]
+                delattr(b1, 'fold')
+                delattr(b1, 'y')
+                delattr(b2, 'fold')
+                delattr(b2, 'y')
+                return b1, b2, other
             else:
                 item -= size
         if item >= 0:
