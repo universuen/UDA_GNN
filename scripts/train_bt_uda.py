@@ -6,8 +6,8 @@ from torch_geometric.loader import DataLoader
 import src
 import config
 
-CONFIG_NAME = 'barlow_twins_baseline'
-DEVICE = 0
+CONFIG_NAME = 'UDA_barlow_twins'
+DEVICE = 1
 
 if __name__ == '__main__':
     """
