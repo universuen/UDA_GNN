@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import torch
 from torch import nn
 from torch_geometric.nn.glob import global_mean_pool
+
 from torch_geometric.data import Data, Batch
 
 import src

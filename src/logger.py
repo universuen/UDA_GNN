@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import sys
 import os
@@ -38,12 +40,17 @@ class Logger(logging.Logger):
         f_handler.setLevel(config.Logger.level)
         self.addHandler(f_handler)
 
-    def log_config_info(self, config_cls: config.ConfigType):
+    def log_config_info(self, config_cls: config.ConfigType, end: bool = True):
         self.info(f'{config_cls.__name__:*^100}')
         for k, v in config_cls.to_dict().items():
             self.info(f'{k}: {v}')
-        self.info('*' * 100)
+        if end: self.info('*' * 100)
 
     def log_all_config(self):
+        self.info(f"{'General':*^100}")
+        self.info(f'config_name: {config.config_name}')
+        self.info(f'seed: {config.seed}')
+        self.info(f'device: {config.device}')
         for i in config.get_all_configs():
-            self.log_config_info(i)
+            self.log_config_info(i, end=False)
+        self.info('*' * 100)

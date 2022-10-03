@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import random
 from pathlib import Path
@@ -151,11 +153,12 @@ class Logger(_Config):
     date_fmt: str = '%Y-%m-%d %H:%M:%S'
 
 
+_all_items = vars().values()
 def get_all_configs() -> list[ConfigType]:
     results = []
-    for i in vars().values():
+    for i in _all_items:
         try:
-            if issubclass(i, _Config):
+            if issubclass(i, _Config) and not i.__name__.startswith('_'):
                 results.append(i)
         except TypeError:
             pass

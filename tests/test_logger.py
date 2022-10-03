@@ -1,3 +1,5 @@
+import context
+
 from src.logger import Logger
 import config
 

@@ -1,3 +1,5 @@
+import context
+
 from torch_geometric.loader import DataLoader
 
 from src import MoleculeDataset

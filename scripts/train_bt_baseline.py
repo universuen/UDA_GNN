@@ -6,14 +6,18 @@ from torch_geometric.loader import DataLoader
 import src
 import config
 
+CONFIG_NAME = 'barlow_twins_baseline'
+DEVICE = 0
+
 if __name__ == '__main__':
     """
     Pretraining
     """
     # set config name
-    config.config_name = 'barlow_twins_baseline'
+    config.config_name = CONFIG_NAME
+    config.device = f'cuda:{DEVICE}'
     # set logger
-    logger = src.Logger(config.config_name)
+    logger = src.Logger('main')
     # set data loader
     loader = DataLoader(
         dataset=src.dataset.MoleculeAugDataset(
@@ -46,14 +50,14 @@ if __name__ == '__main__':
             optimizer.step()
             loss_history.append(loss)
             logger.info(src.utils.training_bar(e, idx, len(loader), loss=loss))
-
-        models_dir = config.Paths.models / config.config_name
-        models_dir.mkdir(exist_ok=True)
-        torch.save(
-            model.state_dict(),
-            models_dir / f'pretraining_model_{e + 1}.pt'
-        )
-        logger.info(f"model saved at {models_dir / f'pretraining_model_{e + 1}.pt'}")
+        if (e + 1) % 20 == 0:
+            models_dir = config.Paths.models / config.config_name
+            models_dir.mkdir(exist_ok=True)
+            torch.save(
+                model.state_dict(),
+                models_dir / f'pretraining_model_{e + 1}.pt'
+            )
+            logger.info(f"model saved at {models_dir / f'pretraining_model_{e + 1}.pt'}")
     # save the final model
     torch.save(
         model.gnn.state_dict(),
