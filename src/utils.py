@@ -153,7 +153,6 @@ def tune(dataset_name: str):
             optimizer.step()
             loss_history.append(loss)
             logger.info(training_bar(e, idx, len(training_loader), loss=loss))
-        loss_history.save()
         # evaluation
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))

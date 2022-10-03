@@ -18,5 +18,7 @@ if __name__ == '__main__':
             history.load(config.Paths.results / config.config_name / f'{ds}_tuning_losses_{seed}.history')
             results[ds].append(history.avg_value)
 
-    print(' '.join(results.keys()))
-    print(' '.join(map(lambda x: str(sum(x) / len(x)), results.values())))
+    values = list(map(max, results.values()))
+    values.append(str(sum(values) / len(values)))
+    print(' '.join([*results.keys(), 'mean']))
+    print(' '.join([str(i) for i in values]))
