@@ -1,6 +1,4 @@
-import context
-
-from src import config
+import config
 
 if __name__ == '__main__':
     config.Paths.print_content()

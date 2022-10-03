@@ -1,5 +1,5 @@
 from src import types
-from src import config
+import config
 from src.original.gnn_model import EqvGNN as _EqvGNN
 
 

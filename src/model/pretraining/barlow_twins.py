@@ -4,7 +4,7 @@ from torch_geometric.nn.glob import global_mean_pool
 from torch_geometric.data import Data, Batch
 
 import src
-from src import config
+import config
 from src import types
 
 

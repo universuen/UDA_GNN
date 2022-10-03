@@ -2,9 +2,8 @@ import logging
 import sys
 import os
 from pathlib import Path
-from typing import Type
 
-from src import config
+import config
 
 
 class Logger(logging.Logger):
@@ -39,7 +38,8 @@ class Logger(logging.Logger):
         f_handler.setLevel(config.Logger.level)
         self.addHandler(f_handler)
 
-    def log_config_info(self, config_cls: Type[config.Config]):
-        self.info(config_cls.__name__)
+    def log_config_info(self, config_cls: config.ConfigType):
+        self.info(f'{config_cls.__name__:*^100}')
         for k, v in config_cls.to_dict().items():
             self.info(f'{k}: {v}')
+        self.info('*' * 100)

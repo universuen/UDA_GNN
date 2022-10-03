@@ -1,6 +1,7 @@
 from torch.nn import Module
 
 from src import logger
+from config import ConfigType
 
 
 class GNNModel(Module):
@@ -15,5 +16,5 @@ class PretrainingModel(Module):
         self.logger = logger.Logger(self.__class__.__name__)
 
 
-class Dataset():
+class Dataset:
     pass
