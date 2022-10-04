@@ -23,5 +23,5 @@ if __name__ == '__main__':
 
     values = list(map(lambda x: sum(x) / len(x), results.values()))
     values.append(sum(values) / len(values))
-    print(' '.join([*results.keys(), 'mean']))
-    print(' '.join([f'{i:.4f}' for i in values]))
+    print(' '.join([*[f'{i: <10}' for i in results.keys()], 'mean']))
+    print(' '.join([f'{i: <10.4f}' for i in values]))
