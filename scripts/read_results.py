@@ -16,12 +16,12 @@ if __name__ == '__main__':
         for seed in range(10):
             try:
                 history = src.History()
-                history.load(config.Paths.results / config.config_name / f'{ds}_tuning_losses_{seed}.history')
+                history.load(config.Paths.results / config.config_name / f'{ds}_te_auc_{seed}.history')
                 results[ds].append(history.avg_value)
             except FileNotFoundError:
                 pass
 
-    values = list(map(max, results.values()))
-    values.append(str(sum(values) / len(values)))
+    values = list(map(lambda x: sum(x) / len(x), results.values()))
+    values.append(sum(values) / len(values))
     print(' '.join([*results.keys(), 'mean']))
-    print(' '.join([str(i) for i in values]))
+    print(' '.join([f'{i:.4f}' for i in values]))
