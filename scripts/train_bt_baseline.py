@@ -1,5 +1,7 @@
 import context
 
+from copy import deepcopy
+
 import torch
 from torch_geometric.loader import DataLoader
 
@@ -71,10 +73,11 @@ if __name__ == '__main__':
     """
     Tuning
     """
+    pretrained_model = deepcopy(model)
     for seed in range(10):
         config.seed = seed
         src.utils.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
             logger.log_all_config()
-            src.utils.tune(config.TuningDataset.dataset)
+            src.utils.tune(config.TuningDataset.dataset, pretrained_model.gnn)
