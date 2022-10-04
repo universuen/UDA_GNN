@@ -14,9 +14,12 @@ if __name__ == '__main__':
 
     for ds in results.keys():
         for seed in range(10):
-            history = src.History()
-            history.load(config.Paths.results / config.config_name / f'{ds}_tuning_losses_{seed}.history')
-            results[ds].append(history.avg_value)
+            try:
+                history = src.History()
+                history.load(config.Paths.results / config.config_name / f'{ds}_tuning_losses_{seed}.history')
+                results[ds].append(history.avg_value)
+            except FileNotFoundError:
+                pass
 
     values = list(map(max, results.values()))
     values.append(str(sum(values) / len(values)))
