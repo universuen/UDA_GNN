@@ -12,4 +12,4 @@ venv/
 data/
 
 # general test file
-playground.py
+tests/playground.py

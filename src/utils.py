@@ -104,16 +104,10 @@ def eval_chem(model, loader):
     mean_roc = sum(roc_list) / len(roc_list)
     return mean_roc
 
-def tune(dataset_name: str):
+
+def tune(dataset_name: str, gnn: src.types.GNNModel):
     logger = _logger.Logger(f'tune_{dataset_name}')
     logger.info('Started Tuning')
-    gnn = src.model.gnn.EqvGNN()
-    gnn.load_state_dict(
-        torch.load(
-            config.Paths.models / config.config_name / f'pretraining_model_final.pt',
-            map_location=lambda storage, loc: storage,
-        )
-    )
     tr_dataset, va_dataset, te_dataset = split_dataset(
         src.dataset.MoleculeDataset(
             dataset=dataset_name

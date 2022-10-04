@@ -34,7 +34,7 @@ class History:
                 f,
             )
 
-    def load(self, path: Path):
+    def load(self, path: Path | str):
         with open(path, 'rb') as f:
             records = pickle.load(f)
             self.name = records['name']

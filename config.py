@@ -70,8 +70,8 @@ class Pretraining(_Config):
 
 class Tuning(_Config):
     epochs: int = 100
-    lr: float = 1e-4
-    batch_size: int = 128
+    lr: float = 1e-3
+    batch_size: int = 32
 
 
 class PretrainingDataset(_Config):
@@ -134,6 +134,17 @@ class EqvGNN(_Config):
     num_layer: int = 5
     emb_dim: int = 300
     use_edge_dropout: bool = False
+    jk: str = "last"
+    drop_ratio: int | float = 0
+
+    # validity check
+    assert jk in ("concat", "last", "max", "sum")
+    assert 0 <= drop_ratio <= 1
+
+
+class GNN(_Config):
+    num_layer: int = 5
+    emb_dim: int = 300
     jk: str = "last"
     drop_ratio: int | float = 0
 
