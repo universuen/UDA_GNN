@@ -4,18 +4,27 @@ import pickle
 from pathlib import Path
 
 from torch import Tensor
+import numpy as np
 
 import config
 
 
 class History:
-    def __init__(self, name: str = None):
+    def __init__(self, name: str = None, values: list = None):
         self.name = name
-        self.values = []
+        self.values = [] if values is None else values
 
     @property
     def avg_value(self):
         return sum(self.values) / len(self.values)
+
+    @property
+    def max_value(self):
+        return max(self.values)
+
+    @property
+    def std_deviation(self):
+        return np.std(self.values)
 
     def append(self, value: float | Tensor):
         if type(value) is Tensor:
