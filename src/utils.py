@@ -106,13 +106,16 @@ def eval_chem(model, loader):
 
 
 def tune(dataset_name: str, gnn: src.types.GNNModel):
+    # set up logger
     logger = _logger.Logger(f'tune_{dataset_name}')
     logger.info('Started Tuning')
+    # split dataset into training, validation, and test
     tr_dataset, va_dataset, te_dataset = split_dataset(
         src.dataset.MoleculeDataset(
             dataset=dataset_name
         )
     )
+    # set up dataloaders
     tr_loader = get_eval_loader(tr_dataset)
     va_loader = get_eval_loader(va_dataset)
     te_loader = get_eval_loader(te_dataset)
@@ -123,16 +126,20 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
         num_workers=config.TuningLoader.num_workers,
         pin_memory=True,
     )
+    # set up classifying model, optimizer, and criterion
     clf = src.model.GraphClf(gnn).to(config.device)
     optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # prepare to record evaluations
     logger.info(f'seed: {config.seed}')
     logger.log_config_info(config.Tuning)
     loss_history = src.History(f'{dataset_name}_tuning_losses_{config.seed}')
     tr_auc_history = src.History(f'{dataset_name}_tr_auc_{config.seed}')
     va_auc_history = src.History(f'{dataset_name}_va_auc_{config.seed}')
     te_auc_history = src.History(f'{dataset_name}_te_auc_{config.seed}')
-    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # training loop
     for e in range(config.Tuning.epochs):
+        clf.train()
         for idx, batch in enumerate(training_loader):
             batch = batch.to(config.device)
             pred = clf(batch)
@@ -146,7 +153,7 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
             optimizer.step()
             loss_history.append(loss)
             logger.info(training_bar(e, idx, len(training_loader), loss=loss))
-        # evaluation
+        # evaluate
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
