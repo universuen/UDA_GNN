@@ -7,7 +7,7 @@ import src
 import config
 
 CONFIG_NAME = 'finetune_UDA'
-DEVICE = 0
+DEVICE = 2
 
 if __name__ == '__main__':
     # set config
@@ -54,7 +54,7 @@ if __name__ == '__main__':
             optimizer = torch.optim.Adam(model.parameters(), config.Pretraining.lr)
             for e in range(config.Pretraining.epochs):
                 for idx, (b1, b2, _) in enumerate(loader):
-                    torch.cuda.empty_cache()
+                    # torch.cuda.empty_cache()
                     b1.to(config.device)
                     b2.to(config.device)
                     optimizer.zero_grad()

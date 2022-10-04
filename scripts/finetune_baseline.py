@@ -7,7 +7,7 @@ import src
 import config
 
 CONFIG_NAME = 'finetune_baseline'
-DEVICE = 0
+DEVICE = 1
 
 if __name__ == '__main__':
     # set config name

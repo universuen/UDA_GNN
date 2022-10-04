@@ -134,7 +134,6 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     for e in range(config.Tuning.epochs):
         for idx, batch in enumerate(training_loader):
-            torch.cuda.empty_cache()
             batch = batch.to(config.device)
             pred = clf(batch)
             y = batch.y.view(pred.shape).to(torch.float64)
