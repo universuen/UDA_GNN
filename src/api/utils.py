@@ -42,7 +42,7 @@ def set_debug_mode():
     config.device = 'cuda:0'
 
 
-def training_bar(epoch: int, total_epochs: int, **kwargs):
+def training_bar(epoch: int, total_epochs: int, **kwargs) -> str:
     content = f'epoch {epoch + 1} / {total_epochs}:'
     for k, v in kwargs.items():
         content = ' '.join([content, f'[{k}:{v:.5f}]'])
@@ -96,7 +96,7 @@ def split_dataset(dataset):
 
 
 @torch.no_grad()
-def eval_chem(model, loader):
+def eval_chem(model, loader) -> float:
     model.eval()
     y_true = []
     y_scores = []
@@ -150,7 +150,6 @@ def pretrain(model: src.types.PretrainingModel):
             optimizer.step()
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}')
-            break
         logger.info(training_bar(e, config.Pretraining.epochs, loss=loss_history.last_one))
         if (e + 1) % 20 == 0:
             models_dir = config.Paths.models / config.config_name

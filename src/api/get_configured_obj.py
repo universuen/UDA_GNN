@@ -4,7 +4,7 @@ import src
 from src import config, types
 
 
-def get_configured_logger(name: str):
+def get_configured_logger(name: str) -> types.Logger:
     if config.config_name is None:
         raise NotImplementedError('config_name is mandatory.')
     logs_dir = config.Paths.logs / config.config_name
@@ -14,7 +14,7 @@ def get_configured_logger(name: str):
     )
 
 
-def get_configured_pretraining_dataset():
+def get_configured_pretraining_dataset() -> types.Dataset:
     return src.dataset.MoleculeAugDataset(
         dataset=config.PretrainingDataset.dataset,
         aug_1=config.PretrainingDataset.aug_1,
@@ -25,7 +25,7 @@ def get_configured_pretraining_dataset():
     )
 
 
-def get_configured_pretraining_loader(dataset: types.Dataset):
+def get_configured_pretraining_loader(dataset: types.Dataset) -> DataLoader:
     return DataLoader(
         dataset=dataset,
         batch_size=config.Pretraining.batch_size,
@@ -37,13 +37,13 @@ def get_configured_pretraining_loader(dataset: types.Dataset):
     )
 
 
-def get_configured_tuning_dataset():
+def get_configured_tuning_dataset() -> types.Dataset:
     return src.dataset.MoleculeDataset(
         dataset=config.TuningDataset.dataset,
     )
 
 
-def get_configured_tuning_dataloader(dataset: types.Dataset):
+def get_configured_tuning_dataloader(dataset: types.Dataset) -> DataLoader:
     return DataLoader(
         dataset=dataset,
         batch_size=config.Tuning.batch_size,
@@ -53,7 +53,7 @@ def get_configured_tuning_dataloader(dataset: types.Dataset):
     )
 
 
-def get_configured_gnn():
+def get_configured_gnn() -> types.GNNModel:
     return src.model.gnn.GNN(
         num_layer=config.GNN.num_layer,
         emb_dim=config.GNN.emb_dim,
@@ -62,7 +62,7 @@ def get_configured_gnn():
     ).to(config.device)
 
 
-def get_configured_barlow_twins(gnn: src.types.GNNModel):
+def get_configured_barlow_twins(gnn: src.types.GNNModel) -> types.PretrainingModel:
     return src.model.pretraining.BarlowTwins(
         model=gnn,
         lambda_=config.BarlowTwins.lambda_,
