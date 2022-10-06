@@ -21,7 +21,10 @@ if __name__ == '__main__':
             except FileNotFoundError:
                 pass
 
-    values = list(map(lambda x: sum(x) / len(x), results.values()))
+    def safe_mean(list_):
+        return None if len(list_) == 0 else sum(list_) / len(list_)
+
+    values = list(map(safe_mean, results.values()))
     values.append(sum(values) / len(values))
     print(' '.join([*[f'{i: <10}' for i in results.keys()], 'mean']))
     print(' '.join([f'{i: <10.4f}' for i in values]))
