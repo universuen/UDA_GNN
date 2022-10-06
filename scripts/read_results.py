@@ -9,7 +9,7 @@ if __name__ == '__main__':
     results_dir = sys.argv[1]
 
     results = {
-        k: [0] for k in config.datasets
+        k: [] for k in config.datasets
     }
 
     for ds in results.keys():
