@@ -22,7 +22,7 @@ if __name__ == '__main__':
                 pass
 
     def safe_mean(list_):
-        return None if len(list_) == 0 else sum(list_) / len(list_)
+        return 0 if len(list_) == 0 else sum(list_) / len(list_)
 
     values = list(map(safe_mean, results.values()))
     values.append(sum(values) / len(values))
