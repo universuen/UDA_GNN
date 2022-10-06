@@ -7,9 +7,13 @@ import src
 import config
 
 CONFIG_NAME = 'finetune_baseline'
-DEVICE = 1
+DEVICE = 0
 
 if __name__ == '__main__':
+    """DEBUG"""
+    config.datasets = ['bbbp']
+    """"""
+
     # set config name
     config.config_name = CONFIG_NAME
     # set device

@@ -129,6 +129,11 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
     # set up classifying model, optimizer, and criterion
     clf = src.model.GraphClf(gnn).to(config.device)
     optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=optimizer,
+        step_size=30,
+        gamma=0.3,
+    )
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     # prepare to record evaluations
     logger.info(f'seed: {config.seed}')
@@ -153,6 +158,9 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
             optimizer.step()
             loss_history.append(loss)
             logger.info(training_bar(e, idx, len(training_loader), loss=loss))
+        if config.Tuning.use_lr_scheduler:
+            lr_scheduler.step()
+            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
         # evaluate
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
