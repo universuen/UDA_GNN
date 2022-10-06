@@ -130,7 +130,7 @@ class PretrainingLoader(_Config):
 
 
 class TuningLoader(_Config):
-    num_workers: int = 4
+    num_workers: int = 8
     pin_memory: bool = True
 
 

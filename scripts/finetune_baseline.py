@@ -1,10 +1,9 @@
 import context
 
 import torch
-from torch_geometric.loader import DataLoader
 
-import src
 import config
+import utils
 
 CONFIG_NAME = 'finetune_baseline'
 DEVICE = 0
@@ -16,30 +15,27 @@ if __name__ == '__main__':
     # set device
     config.device = f'cuda:{DEVICE}'
     # set seed
-    src.utils.set_seed(config.seed)
-    # set logger
-    logger = src.Logger('main')
+    utils.set_seed()
+
     """
     Tuning
     """
     for seed in config.loop_seeds:
         # set seed
         config.seed = seed
-        src.utils.set_seed(config.seed)
+        utils.set_seed()
         # tune all datasets
         for ds in config.datasets:
             # load model
-            model = src.model.pretraining.BarlowTwins()
+            gnn = utils.load_gnn()
+            model = utils.load_barlow_twins(gnn)
             state_dict = torch.load(
                 config.Paths.models / 'base_bt_model.pt',
                 map_location=lambda storage, loc: storage,
             )
             model.load_state_dict(state_dict)
-            model.to(config.device)
             model.train()
             # set tuning dataset
             config.TuningDataset.dataset = ds
-            # log all config for later check
-            logger.log_all_config()
             # tune
-            src.utils.tune(config.TuningDataset.dataset, model.gnn)
+            utils.tune(config.TuningDataset.dataset, model.gnn)

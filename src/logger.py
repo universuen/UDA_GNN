@@ -12,14 +12,13 @@ class Logger(logging.Logger):
     def __init__(
             self,
             name: str,
-            level: int | str = config.Logger.level,
-            logs_dir: Path | None = None,
+
     ) -> None:
-        if logs_dir is None:
-            if config.config_name is None:
-                raise NotImplementedError('config_name is mandatory.')
-            logs_dir = config.Paths.logs / config.config_name
-        super().__init__(name, level=level)
+
+        if config.config_name is None:
+            raise NotImplementedError('config_name is mandatory.')
+        logs_dir = config.Paths.logs / config.config_name
+        super().__init__(name, level=config.Logger.level)
         # set format
         formatter = logging.Formatter(
             fmt=config.Logger.message_fmt,

@@ -6,8 +6,6 @@ from pathlib import Path
 from torch import Tensor
 import numpy as np
 
-import config
-
 
 class History:
     def __init__(self, name: str = None, values: list = None):
@@ -38,8 +36,7 @@ class History:
             value = value.item()
         self.values.append(value)
 
-    def save(self):
-        path = config.Paths.results / config.config_name
+    def save(self, path: Path | str):
         path.mkdir(exist_ok=True)
         with open(path / f'{self.name}.history', 'wb') as f:
             pickle.dump(

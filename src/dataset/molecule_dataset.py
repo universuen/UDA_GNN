@@ -6,7 +6,7 @@ from src.original.loader import MoleculeDataset as _MoleculeDataset
 class MoleculeDataset(_MoleculeDataset, types.Dataset):
     def __init__(
             self,
-            dataset: str = None,
+            dataset: str,
     ):
         super().__init__(
             root=str(config.Paths.datasets / dataset),

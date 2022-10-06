@@ -20,6 +20,7 @@ def set_debug_mode():
     config.Tuning.epochs = 1
     config.Logger.level = 'DEBUG'
     config.PretrainingLoader.num_workers = 0
+    config.TuningLoader.num_workers = 0
 
 
 def training_bar(epoch: int, total_epochs: int, **kwargs):
@@ -29,7 +30,7 @@ def training_bar(epoch: int, total_epochs: int, **kwargs):
     return content
 
 
-def set_seed(seed: int):
+def set_seed(seed: int = config.seed):
     if_cuda = torch.cuda.is_available()
     torch.manual_seed(seed)
     if if_cuda:
@@ -104,14 +105,93 @@ def eval_chem(model, loader):
     return mean_roc
 
 
+def load_gnn():
+    return src.model.gnn.GNN(
+        num_layer=config.GNN.num_layer,
+        emb_dim=config.GNN.emb_dim,
+        jk=config.GNN.jk,
+        drop_ratio=config.GNN.drop_ratio,
+    ).to(config.device)
+
+
+def load_barlow_twins(gnn: src.types.GNNModel):
+    return src.model.pretraining.BarlowTwins(
+        model=gnn,
+        lambda_=config.BarlowTwins.lambda_,
+        sizes=config.BarlowTwins.sizes,
+    ).to(config.device)
+
+
+def pretrain(model: src.types.PretrainingModel):
+    logger = src.Logger(
+        name=f'tune_{config.PretrainingDataset.dataset}'
+    )
+    logger.log_all_config()
+    logger.info('Started Pretraining')
+
+    logger.debug('Prepare')
+    model.to(config.device)
+    loader = DataLoader(
+        dataset=src.dataset.MoleculeAugDataset(
+            dataset=config.PretrainingDataset.dataset,
+            aug_1=config.PretrainingDataset.aug_1,
+            aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
+            aug_2=config.PretrainingDataset.aug_2,
+            aug_ratio_2=config.PretrainingDataset.aug_ratio_2,
+            use_original=config.PretrainingDataset.use_original,
+        ),
+        batch_size=config.Pretraining.batch_size,
+        shuffle=True,
+        num_workers=config.PretrainingLoader.num_workers,
+        pin_memory=config.PretrainingLoader.pin_memory,
+        drop_last=config.PretrainingLoader.drop_last,
+        worker_init_fn=config.PretrainingLoader.worker_init_fn,
+    )
+    optimizer = torch.optim.Adam(model.parameters(), config.Pretraining.lr)
+    loss_history = src.History('pretraining_losses')
+
+    logger.debug('Training loop')
+    for e in range(config.Pretraining.epochs):
+        for idx, (b1, b2, _) in enumerate(loader):
+            torch.cuda.empty_cache()
+            b1.to(config.device)
+            b2.to(config.device)
+            optimizer.zero_grad()
+            loss = model(b1, b2)
+            loss.backward()
+            optimizer.step()
+            loss_history.append(loss)
+            logger.debug(f'epoch: {e}, loss: {loss}')
+            break
+        logger.info(training_bar(e, config.Pretraining.epochs, loss=loss_history.last_one))
+        if (e + 1) % 20 == 0:
+            models_dir = config.Paths.models / config.config_name
+            models_dir.mkdir(exist_ok=True)
+            torch.save(
+                model.state_dict(),
+                models_dir / f'pretraining_model_{e + 1}.pt'
+            )
+            logger.info(f"model saved at {models_dir / f'pretraining_model_{e + 1}.pt'}")
+
+    logger.debug('Save the final model')
+    torch.save(
+        model.gnn.state_dict(),
+        config.Paths.models / config.config_name / f'pretraining_model_final.pt'
+    )
+    loss_history.save(config.Paths.results / config.config_name)
+
+
 def tune(dataset_name: str, gnn: src.types.GNNModel):
-    # set up logger
-    logger = _logger.Logger(f'tune_{dataset_name}')
+    logger = _logger.Logger(
+        name=f'tune_{dataset_name}',
+    )
+    logger.log_all_config()
     logger.info('Started Tuning')
-    # split dataset into training, validation, and test
+
+    logger.debug('Prepare')
     tr_dataset, va_dataset, te_dataset = split_dataset(
         src.dataset.MoleculeDataset(
-            dataset=dataset_name
+            dataset=dataset_name,
         )
     )
     # set up dataloaders
@@ -126,7 +206,10 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
         pin_memory=True,
     )
     # set up classifying model, optimizer, and criterion
-    clf = src.model.GraphClf(gnn).to(config.device)
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+    ).to(config.device)
     optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer=optimizer,
@@ -135,13 +218,12 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
     )
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     # prepare to record evaluations
-    logger.info(f'seed: {config.seed}')
-    logger.log_config_info(config.Tuning)
     loss_history = src.History(f'{dataset_name}_tuning_losses_{config.seed}')
     tr_auc_history = src.History(f'{dataset_name}_tr_auc_{config.seed}')
     va_auc_history = src.History(f'{dataset_name}_va_auc_{config.seed}')
     te_auc_history = src.History(f'{dataset_name}_te_auc_{config.seed}')
-    # training loop
+
+    logger.debug('Training loop')
     for e in range(config.Tuning.epochs):
         clf.train()
         for idx, batch in enumerate(training_loader):
@@ -157,13 +239,12 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
             optimizer.step()
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}')
-        # evaluate
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
-        tr_auc_history.save()
-        va_auc_history.save()
-        te_auc_history.save()
+        tr_auc_history.save(config.Paths.results / config.config_name)
+        va_auc_history.save(config.Paths.results / config.config_name)
+        te_auc_history.save(config.Paths.results / config.config_name)
         logger.info(
             training_bar(
                 e,
