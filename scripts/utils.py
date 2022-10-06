@@ -124,7 +124,7 @@ def load_barlow_twins(gnn: src.types.GNNModel):
 
 def pretrain(model: src.types.PretrainingModel):
     logger = src.Logger(
-        name=f'tune_{config.PretrainingDataset.dataset}'
+        name=f'pretrain_{config.PretrainingDataset.dataset}'
     )
     logger.log_all_config()
     logger.info('Started Pretraining')
