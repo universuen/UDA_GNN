@@ -26,7 +26,7 @@ if __name__ == '__main__':
     """
     Tuning
     """
-    for seed in range(10):
+    for seed in config.loop_seeds:
         # set seed
         config.seed = seed
         src.utils.set_seed(config.seed)

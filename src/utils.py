@@ -22,11 +22,10 @@ def set_debug_mode():
     config.PretrainingLoader.num_workers = 0
 
 
-def training_bar(epoch: int, idx: int, total: int, **kwargs):
-    content = f'epoch {epoch + 1}:'
+def training_bar(epoch: int, total_epochs: int, **kwargs):
+    content = f'epoch {epoch + 1} / {total_epochs}:'
     for k, v in kwargs.items():
         content = ' '.join([content, f'[{k}:{v:.5f}]'])
-    content = ' '.join([content, f'[progress:{(idx + 1) / total:0>6.2%}]'])
     return content
 
 
@@ -157,10 +156,7 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
             loss.backward()
             optimizer.step()
             loss_history.append(loss)
-            logger.info(training_bar(e, idx, len(training_loader), loss=loss))
-        if config.Tuning.use_lr_scheduler:
-            lr_scheduler.step()
-            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
+            logger.debug(f'epoch: {e}, loss: {loss}')
         # evaluate
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
@@ -168,3 +164,16 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
         tr_auc_history.save()
         va_auc_history.save()
         te_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                loss=loss_history.last_one,
+                tr_auc=tr_auc_history.last_one,
+                va_auc=va_auc_history.last_one,
+                te_auc=te_auc_history.last_one,
+            )
+        )
+        if config.Tuning.use_lr_scheduler:
+            lr_scheduler.step()
+            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')

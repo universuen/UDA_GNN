@@ -18,7 +18,7 @@ if __name__ == '__main__':
     src.utils.set_seed(config.seed)
     logger = src.Logger('main')
 
-    for seed in range(10):
+    for seed in config.loop_seeds:
         config.seed = seed
         src.utils.set_seed(config.seed)
         for ds in config.datasets:

@@ -41,6 +41,7 @@ class _Config:
 config_name: str | None = None
 device: str = 'cuda:0'
 seed: int = 0
+loop_seeds: list[int] = [i for i in range(10)]
 
 ConfigType = Type[_Config]
 

@@ -14,6 +14,13 @@ class History:
         self.name = name
         self.values = [] if values is None else values
 
+    def __getitem__(self, item: int):
+        return self.values[item]
+
+    @property
+    def last_one(self):
+        return self[-1]
+
     @property
     def avg_value(self):
         return sum(self.values) / len(self.values)
