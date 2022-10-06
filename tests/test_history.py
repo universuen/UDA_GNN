@@ -1,6 +1,4 @@
-import context
-
-import config
+from src import config
 import src
 
 if __name__ == '__main__':

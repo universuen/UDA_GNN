@@ -1,9 +1,7 @@
-import context
-
 import sys
 
 import src
-import config
+from src import config
 
 if __name__ == '__main__':
     results_dir = sys.argv[1]

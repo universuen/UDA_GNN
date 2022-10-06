@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from src import types
-import config
+from src import types, config
 from src.original.loader import MoleculeDataset_aug_v2
 
 

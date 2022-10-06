@@ -1,5 +1,4 @@
-from src import types
-import config
+from src import types, config
 from src.original.loader import MoleculeDataset as _MoleculeDataset
 
 

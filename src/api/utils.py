@@ -7,20 +7,39 @@ from torch_geometric.loader import DataLoader
 from torch import nn
 from sklearn.metrics import roc_auc_score
 
-import config
 import src
 from src.original.splitters import scaffold_split
-from src import logger as _logger
+from src import config, api
+
+
+def log_config_info(logger, config_cls: config.ConfigType, end: bool = True):
+    logger.info(f'{config_cls.__name__:*^100}')
+    for k, v in config_cls.to_dict().items():
+        logger.info(f'{k}: {v}')
+    if end:
+        logger.info('*' * 100)
+
+
+def log_all_config(logger):
+    logger.info(f"{'General':*^100}")
+    logger.info(f'config_name: {config.config_name}')
+    logger.info(f'seed: {config.seed}')
+    logger.info(f'device: {config.device}')
+    for i in config.get_all_configs():
+        log_config_info(logger, i, end=False)
+    logger.info('*' * 100)
 
 
 def set_debug_mode():
     print('**********DEBUG MODE IS ON!**********')
     config.config_name = 'debug'
     config.Pretraining.epochs = 1
+    config.Pretraining.batch_size = 100
     config.Tuning.epochs = 1
     config.Logger.level = 'DEBUG'
     config.PretrainingLoader.num_workers = 0
     config.TuningLoader.num_workers = 0
+    config.device = 'cuda:0'
 
 
 def training_bar(epoch: int, total_epochs: int, **kwargs):
@@ -105,48 +124,17 @@ def eval_chem(model, loader):
     return mean_roc
 
 
-def load_gnn():
-    return src.model.gnn.GNN(
-        num_layer=config.GNN.num_layer,
-        emb_dim=config.GNN.emb_dim,
-        jk=config.GNN.jk,
-        drop_ratio=config.GNN.drop_ratio,
-    ).to(config.device)
-
-
-def load_barlow_twins(gnn: src.types.GNNModel):
-    return src.model.pretraining.BarlowTwins(
-        model=gnn,
-        lambda_=config.BarlowTwins.lambda_,
-        sizes=config.BarlowTwins.sizes,
-    ).to(config.device)
-
-
 def pretrain(model: src.types.PretrainingModel):
     logger = src.Logger(
         name=f'pretrain_{config.PretrainingDataset.dataset}'
     )
-    logger.log_all_config()
+    log_all_config(logger)
     logger.info('Started Pretraining')
 
     logger.debug('Prepare')
     model.to(config.device)
-    loader = DataLoader(
-        dataset=src.dataset.MoleculeAugDataset(
-            dataset=config.PretrainingDataset.dataset,
-            aug_1=config.PretrainingDataset.aug_1,
-            aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
-            aug_2=config.PretrainingDataset.aug_2,
-            aug_ratio_2=config.PretrainingDataset.aug_ratio_2,
-            use_original=config.PretrainingDataset.use_original,
-        ),
-        batch_size=config.Pretraining.batch_size,
-        shuffle=True,
-        num_workers=config.PretrainingLoader.num_workers,
-        pin_memory=config.PretrainingLoader.pin_memory,
-        drop_last=config.PretrainingLoader.drop_last,
-        worker_init_fn=config.PretrainingLoader.worker_init_fn,
-    )
+    dataset = api.get_configured_pretraining_dataset()
+    loader = api.get_configured_pretraining_loader(dataset)
     optimizer = torch.optim.Adam(model.parameters(), config.Pretraining.lr)
     loss_history = src.History('pretraining_losses')
 
@@ -182,29 +170,21 @@ def pretrain(model: src.types.PretrainingModel):
 
 
 def tune(dataset_name: str, gnn: src.types.GNNModel):
-    logger = _logger.Logger(
+    logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
     )
-    logger.log_all_config()
+    log_all_config(logger)
     logger.info('Started Tuning')
 
     logger.debug('Prepare')
     tr_dataset, va_dataset, te_dataset = split_dataset(
-        src.dataset.MoleculeDataset(
-            dataset=dataset_name,
-        )
+        api.get_configured_tuning_dataset()
     )
     # set up dataloaders
     tr_loader = get_eval_loader(tr_dataset)
     va_loader = get_eval_loader(va_dataset)
     te_loader = get_eval_loader(te_dataset)
-    training_loader = DataLoader(
-        dataset=tr_dataset,
-        batch_size=config.Tuning.batch_size,
-        shuffle=True,
-        num_workers=config.TuningLoader.num_workers,
-        pin_memory=True,
-    )
+    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
     # set up classifying model, optimizer, and criterion
     clf = src.model.GraphClf(
         gnn=gnn,

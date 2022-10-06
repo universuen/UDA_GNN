@@ -15,7 +15,7 @@ from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.loader.dataloader import Collater
 from itertools import repeat, chain
 
-import config
+from src import config
 
 num_atom_type = 120  # including the extra mask tokens
 num_chirality_tag = 3

@@ -1,13 +1,11 @@
-import context
-
 from torch_geometric.loader import DataLoader
 
 import src
-import config
+from src import config
 
 if __name__ == '__main__':
     config.config_name = 'test'
-    src.utils.set_seed(config.seed)
+    src.api.set_seed(config.seed)
     dataset = src.dataset.MoleculeAugDataset(
         dataset=config.PretrainingDataset.dataset,
         aug_1=config.PretrainingDataset.aug_1,
@@ -22,5 +20,4 @@ if __name__ == '__main__':
         shuffle=True,
         drop_last=True,
     )
-    for i in loader:
-        print(i)
+    print(next(iter(loader)))

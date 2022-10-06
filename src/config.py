@@ -47,8 +47,8 @@ ConfigType = Type[_Config]
 
 
 class Paths(_Config):
-    project: Path = Path(__file__).absolute().parent
-    src: Path = project / 'src'
+    src: Path = Path(__file__).absolute().parent
+    project: Path = src.parent
     data: Path = project / 'data'
     scripts: Path = project / 'scripts'
     tests: Path = project / 'tests'
@@ -126,6 +126,7 @@ class PretrainingLoader(_Config):
     num_workers: int = 4
     pin_memory: bool = True
     drop_last: bool = True
+    shuffle: bool = True
     worker_init_fn: Callable = lambda x: _worker_seed_init(x, seed)
 
 
@@ -163,9 +164,7 @@ class BarlowTwins(_Config):
 
 
 class Logger(_Config):
-    message_fmt: str = '%(asctime)s [%(name)s] %(levelname)s: %(message)s'
     level: int | str = logging.INFO
-    date_fmt: str = '%Y-%m-%d %H:%M:%S'
 
 
 _all_items = vars().values()
