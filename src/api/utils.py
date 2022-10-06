@@ -156,14 +156,16 @@ def pretrain(model: src.types.PretrainingModel):
             models_dir.mkdir(exist_ok=True)
             torch.save(
                 model.state_dict(),
-                models_dir / f'pretraining_model_{e + 1}.pt'
+                models_dir / f'pretraining_model_{config.PretrainingDataset.dataset}_{e + 1}.pt'
             )
-            logger.info(f"model saved at {models_dir / f'pretraining_model_{e + 1}.pt'}")
+            logger.info(
+                f"model saved at {models_dir / f'pretraining_model_{config.PretrainingDataset.dataset}_{e + 1}.pt'}"
+            )
 
     logger.debug('Save the final model')
     torch.save(
         model.gnn.state_dict(),
-        config.Paths.models / config.config_name / f'pretraining_model_final.pt'
+        config.Paths.models / config.config_name / f'pretraining_model_{config.PretrainingDataset.dataset}_final.pt'
     )
     loss_history.save(config.Paths.results / config.config_name)
 
