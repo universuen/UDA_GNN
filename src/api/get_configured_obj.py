@@ -10,6 +10,7 @@ def get_configured_logger(name: str) -> types.Logger:
     logs_dir = config.Paths.logs / config.config_name
     return src.logger.Logger(
         name=name,
+        level=config.Logger.level,
         logs_dir=logs_dir,
     )
 

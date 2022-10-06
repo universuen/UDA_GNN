@@ -125,7 +125,7 @@ def eval_chem(model, loader) -> float:
 
 
 def pretrain(model: src.types.PretrainingModel):
-    logger = src.Logger(
+    logger = api.get_configured_logger(
         name=f'pretrain_{config.PretrainingDataset.dataset}'
     )
     log_all_config(logger)
@@ -149,7 +149,7 @@ def pretrain(model: src.types.PretrainingModel):
             loss.backward()
             optimizer.step()
             loss_history.append(loss)
-            logger.debug(f'epoch: {e}, loss: {loss}')
+            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(loader)}')
         logger.info(training_bar(e, config.Pretraining.epochs, loss=loss_history.last_one))
         if (e + 1) % 20 == 0:
             models_dir = config.Paths.models / config.config_name
@@ -217,7 +217,7 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
             loss.backward()
             optimizer.step()
             loss_history.append(loss)
-            logger.debug(f'epoch: {e}, loss: {loss}')
+            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
