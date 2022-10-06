@@ -34,6 +34,7 @@ if __name__ == '__main__':
             Pretraining
             """
             config.PretrainingDataset.dataset = ds
+            config.GNN.drop_ratio = config.Pretraining.gnn_dropout_ratio
             loader = DataLoader(
                 dataset=src.dataset.MoleculeAugDataset(
                     dataset=config.PretrainingDataset.dataset,
@@ -66,5 +67,6 @@ if __name__ == '__main__':
             Tuning
             """
             config.TuningDataset.dataset = ds
+            config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio
             logger.log_all_config()
             src.utils.tune(config.TuningDataset.dataset, model.gnn)

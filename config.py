@@ -66,6 +66,7 @@ class Pretraining(_Config):
     epochs: int = 100
     lr: float = 1e-3
     batch_size: int = 2048
+    gnn_dropout_ratio: float = 0
 
 
 class Tuning(_Config):
@@ -73,6 +74,7 @@ class Tuning(_Config):
     lr: float = 1e-3
     batch_size: int = 32
     use_lr_scheduler: bool = True
+    gnn_dropout_ratio: float = 0.5
 
 
 class PretrainingDataset(_Config):
