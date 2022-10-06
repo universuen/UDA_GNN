@@ -10,10 +10,6 @@ CONFIG_NAME = 'finetune_baseline'
 DEVICE = 0
 
 if __name__ == '__main__':
-    """DEBUG"""
-    config.datasets = ['bbbp']
-    """"""
-
     # set config
     config.config_name = CONFIG_NAME
     config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio

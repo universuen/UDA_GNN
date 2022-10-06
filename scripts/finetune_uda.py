@@ -62,7 +62,6 @@ if __name__ == '__main__':
                     loss = model(b1, b2)
                     loss.backward()
                     optimizer.step()
-                    logger.info(src.utils.training_bar(e, idx, len(loader), loss=loss))
             """
             Tuning
             """
