@@ -44,3 +44,8 @@ def search_epoch(epochs: int):
             config.TuningDataset.dataset = ds
             config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio
             api.tune(config.TuningDataset.dataset, bt_model.gnn)
+
+
+if __name__ == '__main__':
+    for epochs in [10, 20, 50, 100, 200]:
+        search_epoch(epochs)
