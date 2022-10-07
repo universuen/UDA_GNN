@@ -1,6 +1,7 @@
 from torch.nn import Module
 
 from src.logger import Logger
+from src.history import History
 
 
 class GNNModel(Module):

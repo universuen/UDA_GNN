@@ -69,3 +69,11 @@ def get_configured_barlow_twins(gnn: src.types.GNNModel) -> types.PretrainingMod
         lambda_=config.BarlowTwins.lambda_,
         sizes=config.BarlowTwins.sizes,
     ).to(config.device)
+
+
+def get_configured_history(name: str, values: list = None) -> types.History:
+    return src.History(
+        name=name,
+        values=values,
+        result_dir=config.Paths.results / config.config_name,
+    )

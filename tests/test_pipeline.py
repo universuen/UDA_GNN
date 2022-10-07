@@ -5,6 +5,7 @@ if __name__ == '__main__':
     """
     Pretraining
     """
+    config.PretrainingDataset.dataset = 'bbbp'
     api.set_debug_mode()
     gnn_model = api.get_configured_gnn()
     bt_model = api.get_configured_barlow_twins(gnn_model)

@@ -136,7 +136,7 @@ def pretrain(model: src.types.PretrainingModel):
     dataset = api.get_configured_pretraining_dataset()
     loader = api.get_configured_pretraining_loader(dataset)
     optimizer = torch.optim.Adam(model.parameters(), config.Pretraining.lr)
-    loss_history = src.History('pretraining_losses')
+    loss_history = api.get_configured_history('pretraining_losses')
 
     logger.debug('Training loop')
     for e in range(config.Pretraining.epochs):
@@ -167,7 +167,7 @@ def pretrain(model: src.types.PretrainingModel):
         model.gnn.state_dict(),
         config.Paths.models / config.config_name / f'pretraining_model_{config.PretrainingDataset.dataset}_final.pt'
     )
-    loss_history.save(config.Paths.results / config.config_name)
+    loss_history.save()
 
 
 def tune(dataset_name: str, gnn: src.types.GNNModel):
@@ -199,10 +199,10 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
     )
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     # prepare to record evaluations
-    loss_history = src.History(f'{dataset_name}_tuning_losses_{config.seed}')
-    tr_auc_history = src.History(f'{dataset_name}_tr_auc_{config.seed}')
-    va_auc_history = src.History(f'{dataset_name}_va_auc_{config.seed}')
-    te_auc_history = src.History(f'{dataset_name}_te_auc_{config.seed}')
+    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
+    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
+    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
 
     logger.debug('Training loop')
     for e in range(config.Tuning.epochs):
@@ -223,9 +223,9 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
-        tr_auc_history.save(config.Paths.results / config.config_name)
-        va_auc_history.save(config.Paths.results / config.config_name)
-        te_auc_history.save(config.Paths.results / config.config_name)
+        tr_auc_history.save()
+        va_auc_history.save()
+        te_auc_history.save()
         logger.info(
             training_bar(
                 e,

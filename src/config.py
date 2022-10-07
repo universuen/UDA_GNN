@@ -10,14 +10,14 @@ import torch
 import numpy as np
 
 datasets = [
-    "bace",
-    "sider",
     "bbbp",
     "tox21",
+    "toxcast",
+    "sider",
     "clintox",
     "muv",
-    "toxcast",
-    "hiv"
+    "hiv",
+    "bace",
 ]
 
 

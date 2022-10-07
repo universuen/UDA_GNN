@@ -8,9 +8,19 @@ import numpy as np
 
 
 class History:
-    def __init__(self, name: str = None, values: list = None):
+    def __init__(
+            self,
+            name: str = None,
+            values: list = None,
+            result_dir: Path = None,
+    ):
         self.name = name
         self.values = [] if values is None else values
+        if result_dir is not None:
+            result_dir.mkdir(exist_ok=True)
+            self.path = result_dir / f'{name}.history'
+        else:
+            self.path = None
 
     def __getitem__(self, item: int):
         return self.values[item]
@@ -36,9 +46,9 @@ class History:
             value = value.item()
         self.values.append(value)
 
-    def save(self, path: Path | str):
-        path.mkdir(exist_ok=True)
-        with open(path / f'{self.name}.history', 'wb') as f:
+    def save(self, path: Path | str = None):
+        path = self.path if path is None else path
+        with open(path, 'wb') as f:
             pickle.dump(
                 {
                     'name': self.name,
@@ -47,7 +57,7 @@ class History:
                 f,
             )
 
-    def load(self, path: Path | str):
+    def load(self, path: Path | str = None):
         with open(path, 'rb') as f:
             records = pickle.load(f)
             self.name = records['name']
