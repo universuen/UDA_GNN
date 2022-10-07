@@ -163,9 +163,11 @@ def pretrain(model: src.types.PretrainingModel):
             )
 
     logger.debug('Save the final model')
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
     torch.save(
         model.gnn.state_dict(),
-        config.Paths.models / config.config_name / f'pretraining_model_{config.PretrainingDataset.dataset}_final.pt'
+        models_dir / f'pretraining_model_{config.PretrainingDataset.dataset}_final.pt'
     )
     loss_history.save()
 
