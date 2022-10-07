@@ -1,4 +1,4 @@
-import context
+from .. import context
 
 import torch
 
@@ -6,7 +6,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-DEVICE: int = 0
+DEVICE: int = 1
 ROOT_NAME = 'uda_para_search'
 
 
@@ -47,5 +47,5 @@ def search_epoch(epochs: int):
 
 
 if __name__ == '__main__':
-    for epochs in [10, 20, 50, 100, 200]:
+    for epochs in [100, 200]:
         search_epoch(epochs)
