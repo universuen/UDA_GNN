@@ -17,7 +17,7 @@ if __name__ == '__main__':
             try:
                 history = src.History()
                 history.load(f'{results_dir}/{ds}_te_auc_{seed}.history')
-                results[ds].append(history.avg_value)
+                results[ds].append(history.last_one)
             except FileNotFoundError:
                 pass
 
