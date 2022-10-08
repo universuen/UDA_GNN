@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 from torch.nn import Module
 
 from src.logger import Logger
 from src.history import History
+
+Numeric = int | float
 
 
 class GNNModel(Module):
