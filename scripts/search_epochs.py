@@ -11,7 +11,7 @@ DEBUG: bool = False
 ROOT_NAME = 'uda_para_search'
 
 
-def search_epoch(epochs: int, device: int):
+def search_epochs(epochs: int, device: int):
     # set config
     if DEBUG:
         api.set_debug_mode()
@@ -58,6 +58,6 @@ if __name__ == '__main__':
     ]
     for e, d in epochs_device_pairs:
         Process(
-            target=search_epoch,
+            target=search_epochs,
             args=(e, d),
         ).start()
