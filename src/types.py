@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from typing import Union
+
 from torch.nn import Module
 
 from src.logger import Logger
 from src.history import History
 
-Numeric = int | float
+Numeric = Union[int, float]
 
 
 class GNNModel(Module):
