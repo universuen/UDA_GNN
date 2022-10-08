@@ -35,11 +35,12 @@ def set_debug_mode():
     config.config_name = 'debug'
     config.Pretraining.epochs = 1
     config.Pretraining.batch_size = 100
-    config.Tuning.epochs = 1
+    config.Tuning.epochs = 2
     config.Logger.level = 'DEBUG'
     config.PretrainingLoader.num_workers = 0
     config.TuningLoader.num_workers = 0
     config.device = 'cuda:0'
+    config.loop_seeds = [0, 1]
 
 
 def training_bar(epoch: int, total_epochs: int, **kwargs) -> str:
@@ -241,3 +242,38 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
         if config.Tuning.use_lr_scheduler:
             lr_scheduler.step()
             logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
+
+
+def safe_mean(list_: list[src.types.Numeric]) -> src.types.Numeric:
+    return 0 if len(list_) == 0 else round(sum(list_) / len(list_), 1)
+
+
+def analyze_results(steps: list[int] = None):
+    if steps is None:
+        steps = list(range(10, 101, 10))
+    results = {
+        k: {
+            kk: []
+            for kk in steps
+        }
+        for k in [*config.datasets, 'mean']
+    }
+
+    for ds in config.datasets:
+        for step in steps:
+            for seed in config.loop_seeds:
+                try:
+                    history = api.get_configured_history(f'{ds}_te_auc_{seed}')
+                    history.load()
+                    results[ds][step].append(history[step - 1] * 100)
+                except (FileNotFoundError, IndexError):
+                    pass
+            results[ds][step] = safe_mean(results[ds][step])
+            results['mean'][step].append(results[ds][step])
+
+    for step in steps:
+        results['mean'][step] = safe_mean(results['mean'][step])
+
+    results = pd.DataFrame.from_dict(results)
+    print(results)
+    results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')

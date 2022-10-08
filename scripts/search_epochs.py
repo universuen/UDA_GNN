@@ -45,6 +45,7 @@ def search_epoch(epochs: int, device: int):
             config.TuningDataset.dataset = ds
             config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio
             api.tune(config.TuningDataset.dataset, bt_model.gnn)
+    api.analyze_results()
 
 
 if __name__ == '__main__':

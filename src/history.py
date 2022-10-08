@@ -58,6 +58,7 @@ class History:
             )
 
     def load(self, path: Path | str = None):
+        path = self.path if path is None else path
         with open(path, 'rb') as f:
             records = pickle.load(f)
             self.name = records['name']

@@ -40,3 +40,5 @@ if __name__ == '__main__':
             config.TuningDataset.dataset = ds
             config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio
             api.tune(config.TuningDataset.dataset, bt_model.gnn)
+
+    api.analyze_results()

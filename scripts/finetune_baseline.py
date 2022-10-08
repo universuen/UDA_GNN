@@ -38,3 +38,5 @@ if __name__ == '__main__':
             config.TuningDataset.dataset = ds
             # tune
             api.tune(config.TuningDataset.dataset, model.gnn)
+
+    api.analyze_results()
