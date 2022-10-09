@@ -1464,10 +1464,9 @@ def permute_edges(data, aug_ratio):
 def mask_nodes(data, aug_ratio):
     node_num, feat_dim = data.x.size()
     mask_num = int(node_num * aug_ratio)
-
-    token = data.x.mean(dim=0)
+    token = data.x.float().mean(dim=0)
     idx_mask = np.random.choice(node_num, mask_num, replace=False)
-    data.x[idx_mask] = torch.tensor(token, dtype=torch.float32)
+    data.x[idx_mask] = token.long()
 
     return data
 
