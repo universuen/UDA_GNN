@@ -15,5 +15,3 @@ data/
 tests/playground.py
 
 *.xlsx
-*.d000*
-*.e000*
