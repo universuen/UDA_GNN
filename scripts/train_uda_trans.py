@@ -1,4 +1,6 @@
+import context
 from src import config
+
 from src import api
 
 DEBUG: bool = False
