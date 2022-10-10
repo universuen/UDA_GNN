@@ -15,3 +15,5 @@ data/
 tests/playground.py
 
 *.xlsx
+
+run.sh
