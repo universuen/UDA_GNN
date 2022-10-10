@@ -37,6 +37,7 @@ def set_debug_mode():
     config.config_name = 'debug'
     config.Pretraining.epochs = 1
     config.Pretraining.batch_size = 100
+    config.PretrainingDataset.dataset = 'bbbp'
     config.Tuning.epochs = 2
     config.Logger.level = 'DEBUG'
     config.PretrainingLoader.num_workers = 0
@@ -175,7 +176,8 @@ def pretrain(model: src.types.PretrainingModel):
     loss_history.save()
 
 
-def tune(dataset_name: str, gnn: src.types.GNNModel):
+def tune(gnn: src.types.GNNModel):
+    dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
     )
@@ -195,6 +197,7 @@ def tune(dataset_name: str, gnn: src.types.GNNModel):
     clf = src.model.GraphClf(
         gnn=gnn,
         dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
     ).to(config.device)
     optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(

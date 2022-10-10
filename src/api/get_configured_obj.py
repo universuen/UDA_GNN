@@ -68,6 +68,7 @@ def get_configured_barlow_twins(gnn: src.types.GNNModel) -> types.PretrainingMod
         model=gnn,
         lambda_=config.BarlowTwins.lambda_,
         sizes=config.BarlowTwins.sizes,
+        use_graph_trans=config.Pretraining.use_graph_trans,
     ).to(config.device)
 
 
@@ -76,4 +77,11 @@ def get_configured_history(name: str, values: list = None) -> types.History:
         name=name,
         values=values,
         result_dir=config.Paths.results / config.config_name,
+    )
+
+
+def get_configured_graph_trans() -> types.GNNModel:
+    return src.model.gnn.GraphTrans(
+        gnn_dropout=config.GraphTrans.drop_ratio,
+        d_model=config.GraphTrans.d_model,
     )

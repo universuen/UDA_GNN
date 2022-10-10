@@ -9,13 +9,11 @@ DEVICE: int = 0
 
 if __name__ == '__main__':
     # set config
+    config.config_name = CONFIG_NAME
+    config.GNN.drop_ratio = 0.5
+    config.device = f'cuda:{DEVICE}'
     if DEBUG:
         api.set_debug_mode()
-    else:
-        config.config_name = CONFIG_NAME
-        config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio
-        config.device = f'cuda:{DEVICE}'
-
     """
     Tuning
     """
@@ -37,6 +35,6 @@ if __name__ == '__main__':
             # set tuning dataset
             config.TuningDataset.dataset = ds
             # tune
-            api.tune(config.TuningDataset.dataset, model.gnn)
+            api.tune(model.gnn)
 
     api.analyze_results()

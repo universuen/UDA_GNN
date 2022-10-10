@@ -67,7 +67,7 @@ class Pretraining(_Config):
     epochs: int = 100
     lr: float = 1e-3
     batch_size: int = 2048
-    gnn_dropout_ratio: float = 0
+    use_graph_trans: bool = False
 
 
 class Tuning(_Config):
@@ -75,7 +75,6 @@ class Tuning(_Config):
     lr: float = 1e-3
     batch_size: int = 32
     use_lr_scheduler: bool = True
-    gnn_dropout_ratio: float = 0.5
 
 
 class PretrainingDataset(_Config):
@@ -156,6 +155,11 @@ class GNN(_Config):
     # validity check
     assert jk in ("concat", "last", "max", "sum")
     assert 0 <= drop_ratio <= 1
+
+
+class GraphTrans(_Config):
+    drop_ratio: float = 0
+    d_model: int = 300
 
 
 class BarlowTwins(_Config):

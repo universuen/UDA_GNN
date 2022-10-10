@@ -7,12 +7,12 @@ DEVICE: int = 0
 
 if __name__ == '__main__':
     # set config
+    config.config_name = CONFIG_NAME
+    config.GNN.drop_ratio = 0.5
+    config.device = f'cuda:{DEVICE}'
     if DEBUG:
         api.set_debug_mode()
-    else:
-        config.config_name = CONFIG_NAME
-        config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio
-        config.device = f'cuda:{DEVICE}'
+
     """
     Pretraining
     """
@@ -28,5 +28,7 @@ if __name__ == '__main__':
         api.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
+            config.GNN.drop_ratio = 0.5
             bt_model.gnn.load_state_dict(original_states)
-            api.tune(config.TuningDataset.dataset, bt_model.gnn)
+            api.tune(bt_model.gnn)
+    api.analyze_results()

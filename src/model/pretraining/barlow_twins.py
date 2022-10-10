@@ -12,11 +12,13 @@ class BarlowTwins(_BarlowTwins, types.PretrainingModel):
             model: types.GNNModel,
             lambda_: float,
             sizes: tuple[int],
+            use_graph_trans: bool
     ):
         super().__init__(
             model=model,
             lambd=lambda_,
             sizes=sizes,
+            use_graph_trans=use_graph_trans,
         )
         self.logger.debug(f'model: {model}')
         self.logger.debug(f'lambda_: {lambda_}')

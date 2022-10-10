@@ -13,13 +13,12 @@ ROOT_NAME = 'uda_para_search'
 
 def search_epochs(epochs: int, device: int):
     # set config
+    config.config_name = f'{ROOT_NAME}_e{epochs}'
+    config.Pretraining.batch_size = 256
+    config.device = f'cuda:{device}'
+    config.Pretraining.epochs = epochs
     if DEBUG:
         api.set_debug_mode()
-    else:
-        config.config_name = f'{ROOT_NAME}_e{epochs}'
-        config.Pretraining.batch_size = 256
-        config.device = f'cuda:{device}'
-        config.Pretraining.epochs = epochs
 
     for seed in config.loop_seeds:
         config.seed = seed
@@ -37,14 +36,16 @@ def search_epochs(epochs: int, device: int):
             Pretraining
             """
             config.PretrainingDataset.dataset = ds
-            config.GNN.drop_ratio = config.Pretraining.gnn_dropout_ratio
+            config.GNN.drop_ratio = 0
             api.pretrain(bt_model)
             """
             Tuning
             """
             config.TuningDataset.dataset = ds
-            config.GNN.drop_ratio = config.Tuning.gnn_dropout_ratio
-            api.tune(config.TuningDataset.dataset, bt_model.gnn)
+            config.GNN.drop_ratio = 0.5
+            new_gnn = api.get_configured_gnn()
+            new_gnn.load_state_dict(bt_model.gnn.state_dict())
+            api.tune(new_gnn)
     api.analyze_results()
 
 
