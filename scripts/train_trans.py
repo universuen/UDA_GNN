@@ -1,7 +1,7 @@
 from src import config
 from src import api
 
-DEBUG: bool = True
+DEBUG: bool = False
 CONFIG_NAME: str = 'trans'
 DEVICE: int = 0
 
@@ -12,6 +12,7 @@ if __name__ == '__main__':
     config.Pretraining.lr = 1e-4
     config.GraphTrans.drop_ratio = 0
     config.device = f'cuda:{DEVICE}'
+    config.BarlowTwins.sizes = (128, 1200, 1200, 1200)
     if DEBUG:
         api.set_debug_mode()
 

@@ -159,7 +159,7 @@ class GNN(_Config):
 
 class GraphTrans(_Config):
     drop_ratio: float = 0
-    d_model: int = 300
+    d_model: int = 128
 
 
 class BarlowTwins(_Config):
