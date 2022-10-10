@@ -40,6 +40,9 @@ if __name__ == '__main__':
             config.GraphTrans.drop_ratio = 0.3 if ds == 'clintox' else 0.5
             config.Tuning.epochs = 300 if ds == 'clintox' else 100
             # tune
-            trans_model = bt_model.gnn
+            trans_model = api.get_configured_graph_trans()
+            trans_model.load_state_dict(
+                bt_model.gnn.state_dict()
+            )
             api.tune(trans_model)
     api.analyze_results()
