@@ -23,14 +23,10 @@ if __name__ == '__main__':
     bt_model = api.get_configured_barlow_twins(trans_model)
     api.pretrain(bt_model)
 
-    original_states = bt_model.gnn.state_dict()
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
-            trans_model = api.get_configured_graph_trans()
-            bt_model = api.get_configured_barlow_twins(trans_model)
-            bt_model.load_state_dict(original_states)
             """
             Tuning
             """
@@ -38,7 +34,7 @@ if __name__ == '__main__':
             config.TuningDataset.dataset = ds
             config.Tuning.lr = 1e-5 if ds == 'muv' else 1e-4
             config.GraphTrans.drop_ratio = 0.3 if ds == 'clintox' else 0.5
-            config.Tuning.epochs = 300 if ds == 'clintox' else 100
+            config.Tuning.epochs = 128 if ds == 'clintox' else 100
             # tune
             trans_model = api.get_configured_graph_trans()
             trans_model.load_state_dict(
