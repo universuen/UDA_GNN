@@ -28,6 +28,9 @@ if __name__ == '__main__':
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
+            trans_model = api.get_configured_graph_trans()
+            bt_model = api.get_configured_barlow_twins(trans_model)
+            bt_model.load_state_dict(original_states)
             """
             Tuning
             """
@@ -37,7 +40,6 @@ if __name__ == '__main__':
             config.GraphTrans.drop_ratio = 0.3 if ds == 'clintox' else 0.5
             config.Tuning.epochs = 300 if ds == 'clintox' else 100
             # tune
-            trans_model = api.get_configured_graph_trans()
-            trans_model.load_state_dict(original_states)
+            trans_model = bt_model.gnn
             api.tune(trans_model)
     api.analyze_results()
