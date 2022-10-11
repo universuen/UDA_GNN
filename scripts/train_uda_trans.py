@@ -34,6 +34,7 @@ if __name__ == '__main__':
             Pretraining 2
             """
             config.PretrainingDataset.dataset = ds
+            config.Pretraining.batch_size = 256
             config.GraphTrans.drop_ratio = 0
             trans_model = api.get_configured_graph_trans()
             bt_model = api.get_configured_barlow_twins(trans_model)
