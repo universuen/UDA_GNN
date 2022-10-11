@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 import random
 from pathlib import Path
-from typing import Callable
-from typing import Type
+from typing import Callable, Type
+
 
 import torch
 import numpy as np

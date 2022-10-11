@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from src import types, config
 from src.original.loader import MoleculeDataset_aug_v2
+from src.dataset import Dataset
 
 
-class MoleculeAugDataset(MoleculeDataset_aug_v2, types.Dataset):
+class MoleculeAugDataset(MoleculeDataset_aug_v2, Dataset):
     def __init__(
             self,
             dataset: str = None,

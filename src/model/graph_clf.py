@@ -1,14 +1,14 @@
 from torch import nn
 from torch_geometric.nn.glob import global_mean_pool
 
-from src import types
+from src.model.gnn._gnn_model import GNNModel
 
 
 class GraphClf(nn.Module):
     def __init__(
             self,
             dataset: str,
-            gnn: types.GNNModel,
+            gnn: GNNModel,
             use_graph_trans: bool,
     ):
         num_task_dict = {

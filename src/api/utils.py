@@ -5,6 +5,7 @@ import random
 import torch
 import numpy as np
 import pandas as pd
+import torch_geometric.data
 from torch_geometric.loader import DataLoader
 from torch import nn
 from sklearn.metrics import roc_auc_score
@@ -193,7 +194,7 @@ def tune(gnn: src.types.GNNModel):
     va_loader = get_eval_loader(va_dataset)
     te_loader = get_eval_loader(te_dataset)
     training_loader = api.get_configured_tuning_dataloader(tr_dataset)
-    # set up classifying model, optimizer, and criterion
+    # set up classifier, optimizer, and criterion
     clf = src.model.GraphClf(
         gnn=gnn,
         dataset=config.TuningDataset.dataset,
@@ -282,3 +283,89 @@ def analyze_results(steps: list[int] = None):
     results = pd.DataFrame.from_dict(results)
     print(results)
     results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
+
+
+def get_prompt():
+    return src.model.Prompt(300)
+
+
+def tune_with_prompt(gnn: src.types.GNNModel, prompt: src.model.Prompt):
+    # link the prompt to gnn
+    gnn.prompt = prompt
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Tuning')
+
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    # set up dataloaders
+    tr_loader = get_eval_loader(tr_dataset)
+    va_loader = get_eval_loader(va_dataset)
+    te_loader = get_eval_loader(te_dataset)
+    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
+    # set up classifier, optimizer, and criterion
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+    # only optimize linear layer
+    clf_optimizer = torch.optim.Adam(clf.linear.parameters(), config.Tuning.lr)
+    clf_lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=clf_optimizer,
+        step_size=30,
+        gamma=0.3,
+    )
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # set up prompt optimizer
+    prompt_optimizer = torch.optim.Adam(prompt.parameters(), config.Tuning.lr)
+    # prepare to record evaluations
+    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
+    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
+    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+
+    for e in range(config.Tuning.epochs):
+        clf.train()
+        for idx, batch in enumerate(training_loader):
+            batch = batch.to(config.device)
+            # apply prompt
+            pred = clf(batch)
+            y = batch.y.view(pred.shape).to(torch.float64)
+            is_valid = y ** 2 > 0  # shape = [N, C]
+            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
+            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
+            clf_optimizer.zero_grad()
+            prompt_optimizer.zero_grad()
+            loss = torch.sum(loss_mat) / torch.sum(is_valid)
+            loss.backward()
+            clf_optimizer.step()
+            # update prompt
+            prompt_optimizer.step()
+            loss_history.append(loss)
+            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
+        tr_auc_history.append(eval_chem(clf, tr_loader))
+        va_auc_history.append(eval_chem(clf, va_loader))
+        te_auc_history.append(eval_chem(clf, te_loader))
+        tr_auc_history.save()
+        va_auc_history.save()
+        te_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                loss=loss_history.last_one,
+                tr_auc=tr_auc_history.last_one,
+                va_auc=va_auc_history.last_one,
+                te_auc=te_auc_history.last_one,
+            )
+        )
+        if config.Tuning.use_lr_scheduler:
+            clf_lr_scheduler.step()
+            logger.info(f'current LR: {clf_lr_scheduler.get_last_lr()[0]}')
+
+

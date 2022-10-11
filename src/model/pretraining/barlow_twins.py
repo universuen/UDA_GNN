@@ -4,9 +4,10 @@ import src
 # import config
 from src import types
 from src.original.pretrain_model import BarlowTwins as _BarlowTwins
+from src.model.pretraining import PretrainingModel
 
 
-class BarlowTwins(_BarlowTwins, types.PretrainingModel):
+class BarlowTwins(_BarlowTwins, PretrainingModel):
     def __init__(
             self,
             model: types.GNNModel,
@@ -20,8 +21,5 @@ class BarlowTwins(_BarlowTwins, types.PretrainingModel):
             sizes=sizes,
             use_graph_trans=use_graph_trans,
         )
-        self.logger.debug(f'model: {model}')
-        self.logger.debug(f'lambda_: {lambda_}')
-        self.logger.debug(f'sizes: {sizes}')
 
 

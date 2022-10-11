@@ -6,21 +6,10 @@ from torch.nn import Module
 
 from src.logger import Logger
 from src.history import History
+from src.model.gnn import GNNModel
+from src.model.pretraining import PretrainingModel
+from src.dataset import Dataset
 
 Numeric = Union[int, float]
 
 
-class GNNModel(Module):
-    def __init__(self):
-        super().__init__()
-        self.logger = Logger(self.__class__.__name__)
-
-
-class PretrainingModel(Module):
-    def __init__(self):
-        super().__init__()
-        self.logger = Logger(self.__class__.__name__)
-
-
-class Dataset:
-    pass

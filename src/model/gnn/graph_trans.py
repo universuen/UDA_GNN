@@ -1,10 +1,10 @@
 import argparse
 
-from src import types
 from src.original.graph_trans_model import GraphTrans as _GraphTrans
+from src.model.gnn import GNNModel
 
 
-class GraphTrans(_GraphTrans, types.GNNModel):
+class GraphTrans(_GraphTrans, GNNModel):
     def __init__(
             self,
             gnn_dropout: float,

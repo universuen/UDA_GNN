@@ -1,8 +1,9 @@
 from src import types, config
 from src.original.loader import MoleculeDataset as _MoleculeDataset
+from src.dataset import Dataset
 
 
-class MoleculeDataset(_MoleculeDataset, types.Dataset):
+class MoleculeDataset(_MoleculeDataset, Dataset):
     def __init__(
             self,
             dataset: str,
