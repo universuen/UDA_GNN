@@ -2,7 +2,7 @@ import context
 from src import config
 from src import api
 
-DEBUG: bool = True
+DEBUG: bool = False
 CONFIG_NAME: str = 'prompt_bt'
 DEVICE: int = 0
 
