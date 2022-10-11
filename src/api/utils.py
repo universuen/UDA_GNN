@@ -285,13 +285,12 @@ def analyze_results(steps: list[int] = None):
     results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
 
 
-def get_prompt():
-    return src.model.Prompt(300)
-
-
-def tune_with_prompt(gnn: src.types.GNNModel, prompt: src.model.Prompt):
+def tune_with_prompt(gnn: src.types.GNNModel):
     # link the prompt to gnn
-    gnn.prompt = prompt
+    if config.Tuning.use_node_prompt:
+        gnn.node_prompt = src.model.NodePrompt()
+    if config.Tuning.use_edge_prompt:
+        gnn.edge_prompt = src.model.EdgePrompt()
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
@@ -313,16 +312,21 @@ def tune_with_prompt(gnn: src.types.GNNModel, prompt: src.model.Prompt):
         dataset=config.TuningDataset.dataset,
         use_graph_trans=config.Pretraining.use_graph_trans,
     ).to(config.device)
-    # only optimize linear layer
-    clf_optimizer = torch.optim.Adam(clf.linear.parameters(), config.Tuning.lr)
-    clf_lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer=clf_optimizer,
+    parameters = list(clf.linear.parameters())
+    if config.Tuning.use_node_prompt:
+        parameters += list(gnn.node_prompt.parameters())
+    if config.Tuning.use_edge_prompt:
+        parameters += list(gnn.edge_prompt.parameters())
+    optimizer = torch.optim.Adam(
+        parameters,
+        config.Tuning.lr
+    )
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=optimizer,
         step_size=30,
         gamma=0.3,
     )
     criterion = nn.BCEWithLogitsLoss(reduction="none")
-    # set up prompt optimizer
-    prompt_optimizer = torch.optim.Adam(prompt.parameters(), config.Tuning.lr)
     # prepare to record evaluations
     loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
     tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
@@ -339,13 +343,10 @@ def tune_with_prompt(gnn: src.types.GNNModel, prompt: src.model.Prompt):
             is_valid = y ** 2 > 0  # shape = [N, C]
             loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
             loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
-            clf_optimizer.zero_grad()
-            prompt_optimizer.zero_grad()
+            optimizer.zero_grad()
             loss = torch.sum(loss_mat) / torch.sum(is_valid)
             loss.backward()
-            clf_optimizer.step()
-            # update prompt
-            prompt_optimizer.step()
+            optimizer.step()
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
         tr_auc_history.append(eval_chem(clf, tr_loader))
@@ -365,7 +366,5 @@ def tune_with_prompt(gnn: src.types.GNNModel, prompt: src.model.Prompt):
             )
         )
         if config.Tuning.use_lr_scheduler:
-            clf_lr_scheduler.step()
-            logger.info(f'current LR: {clf_lr_scheduler.get_last_lr()[0]}')
-
-
+            lr_scheduler.step()
+            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')

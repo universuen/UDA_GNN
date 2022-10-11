@@ -19,7 +19,8 @@ class GNN(_GNN, GNNModel):
             JK=jk,
             drop_ratio=drop_ratio,
         )
-        self.prompt = None
+        self.node_prompt = None
+        self.edge_prompt = None
 
     def forward(self, *argv):
         if len(argv) == 3:
@@ -32,12 +33,12 @@ class GNN(_GNN, GNNModel):
 
         x = self.x_embedding1(x[:, 0]) + self.x_embedding2(x[:, 1])
 
-        if self.prompt is not None:
-            x = self.prompt.apply_to(x)
+        if self.node_prompt is not None:
+            x = self.node_prompt(x)
 
         h_list = [x]
         for layer in range(self.num_layer):
-            h = self.gnns[layer](h_list[layer], edge_index, edge_attr)
+            h = self.gnns[layer](h_list[layer], edge_index, edge_attr, edge_prompt=self.edge_prompt)
             h = self.batch_norms[layer](h)
             if layer == self.num_layer - 1:
                 # remove relu for the last layer

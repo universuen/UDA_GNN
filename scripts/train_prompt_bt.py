@@ -11,6 +11,9 @@ if __name__ == '__main__':
     config.config_name = CONFIG_NAME
     config.GNN.drop_ratio = 0.5
     config.device = f'cuda:{DEVICE}'
+    config.Tuning.use_lr_scheduler = False
+    config.Tuning.use_node_prompt = True
+    config.Tuning.use_edge_prompt = True
     if DEBUG:
         api.set_debug_mode()
 
@@ -28,6 +31,5 @@ if __name__ == '__main__':
         api.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
-            prompt = api.get_prompt()
-            api.tune_with_prompt(bt_model.gnn, prompt)
+            api.tune_with_prompt(bt_model.gnn)
     api.analyze_results()

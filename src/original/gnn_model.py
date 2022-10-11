@@ -35,7 +35,7 @@ class GINConv(MessagePassing):
         torch.nn.init.xavier_uniform_(self.edge_embedding2.weight.data)
         self.aggr = aggr
 
-    def forward(self, x, edge_index, edge_attr):
+    def forward(self, x, edge_index, edge_attr, edge_prompt=None):
         # add self loops in the edge space
         edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
 
@@ -46,6 +46,17 @@ class GINConv(MessagePassing):
         edge_attr = torch.cat((edge_attr, self_loop_attr), dim=0)
 
         edge_embeddings = self.edge_embedding1(edge_attr[:, 0]) + self.edge_embedding2(edge_attr[:, 1])
+
+        if edge_prompt is not None:
+            edge_embeddings = edge_prompt(
+                edge_embeddings,
+                torch.cat(
+                    [
+                        self.edge_embedding1.weight,
+                        self.edge_embedding2.weight,
+                    ]
+                )
+            )
 
         # edge_index shape = [2, E]; x shape = [N ,D]; edge_embedding shape = [E, D]
         # return self.propagate(self.aggr, edge_index, x=x, edge_attr=edge_embeddings)
@@ -204,7 +215,7 @@ class GNN(torch.nn.Module):
 
     """
 
-    def __init__(self, num_layer, emb_dim, JK="last", drop_ratio=0, gnn_type="gin"):
+    def __init__(self, num_layer, emb_dim, JK="last", drop_ratio=0, gnn_type="gin", edge_prompt=None):
         super(GNN, self).__init__()
         self.num_layer = num_layer
         self.drop_ratio = drop_ratio

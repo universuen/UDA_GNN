@@ -75,6 +75,8 @@ class Tuning(_Config):
     lr: float = 1e-3
     batch_size: int = 32
     use_lr_scheduler: bool = True
+    use_node_prompt: bool = False
+    use_edge_prompt: bool = False
 
 
 class PretrainingDataset(_Config):
