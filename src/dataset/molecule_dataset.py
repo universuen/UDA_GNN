@@ -1,4 +1,3 @@
-from src import types, config
 from src.original.loader import MoleculeDataset as _MoleculeDataset
 from src.dataset import Dataset
 
@@ -6,10 +5,11 @@ from src.dataset import Dataset
 class MoleculeDataset(_MoleculeDataset, Dataset):
     def __init__(
             self,
+            root: str,
             dataset: str,
     ):
         super().__init__(
-            root=str(config.Paths.datasets / dataset),
+            root=root,
             dataset=dataset,
         )
 

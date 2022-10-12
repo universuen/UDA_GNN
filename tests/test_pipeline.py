@@ -5,7 +5,6 @@ if __name__ == '__main__':
     """
     Pretraining
     """
-    config.PretrainingDataset.dataset = 'bbbp'
     api.set_debug_mode()
     gnn_model = api.get_configured_gnn()
     bt_model = api.get_configured_barlow_twins(gnn_model)
@@ -20,5 +19,5 @@ if __name__ == '__main__':
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
             bt_model.gnn.load_state_dict(original_states)
-            api.tune(config.TuningDataset.dataset, bt_model.gnn)
+            api.tune(bt_model.gnn)
     api.analyze_results([1, 2])

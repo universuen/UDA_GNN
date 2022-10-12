@@ -16,8 +16,23 @@ def get_configured_logger(name: str) -> types.Logger:
 
 
 def get_configured_pretraining_dataset() -> types.Dataset:
+    dataset = config.TuningDataset.dataset
     return src.dataset.MoleculeAugDataset(
-        dataset=config.PretrainingDataset.dataset,
+        root=str(config.Paths.datasets / dataset),
+        dataset=dataset,
+        aug_1=config.PretrainingDataset.aug_1,
+        aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
+        aug_2=config.PretrainingDataset.aug_2,
+        aug_ratio_2=config.PretrainingDataset.aug_ratio_2,
+        use_original=config.PretrainingDataset.use_original,
+    )
+
+
+def get_configured_dual_dataset():
+    dataset = config.PretrainingDataset.dataset
+    return src.dataset.DualDataset(
+        dataset_path=str(config.Paths.datasets),
+        dataset=dataset,
         aug_1=config.PretrainingDataset.aug_1,
         aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
         aug_2=config.PretrainingDataset.aug_2,
@@ -39,8 +54,10 @@ def get_configured_pretraining_loader(dataset: types.Dataset) -> DataLoader:
 
 
 def get_configured_tuning_dataset() -> types.Dataset:
+    dataset = config.TuningDataset.dataset
     return src.dataset.MoleculeDataset(
-        dataset=config.TuningDataset.dataset,
+        root=str(config.Paths.datasets / dataset),
+        dataset=dataset,
     )
 
 

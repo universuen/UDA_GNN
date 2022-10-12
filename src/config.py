@@ -68,6 +68,7 @@ class Pretraining(_Config):
     lr: float = 1e-3
     batch_size: int = 2048
     use_graph_trans: bool = False
+    use_dual_dataset: bool = False
 
 
 class Tuning(_Config):

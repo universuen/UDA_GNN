@@ -138,7 +138,10 @@ def pretrain(model: src.types.PretrainingModel):
 
     logger.debug('Prepare')
     model.to(config.device)
-    dataset = api.get_configured_pretraining_dataset()
+    if config.Pretraining.use_dual_dataset:
+        dataset = api.get_configured_dual_dataset()
+    else:
+        dataset = api.get_configured_pretraining_dataset()
     loader = api.get_configured_pretraining_loader(dataset)
     optimizer = torch.optim.Adam(model.parameters(), config.Pretraining.lr)
     loss_history = api.get_configured_history('pretraining_losses')
