@@ -18,7 +18,7 @@ class DualDataset(Dataset):
     ):
         super().__init__()
         self.zinc_ds = MoleculeAugDataset(
-            root=f'{dataset_path}\\zinc_standard_agent',
+            root=f'{dataset_path}/zinc_standard_agent',
             dataset='zinc_standard_agent',
             aug_1=aug_1,
             aug_2=aug_2,
@@ -27,7 +27,7 @@ class DualDataset(Dataset):
             use_original=use_original,
         )
         self.other_ds = MoleculeAugDataset(
-            root=f'{dataset_path}\\{dataset}',
+            root=f'{dataset_path}/{dataset}',
             dataset=dataset,
             aug_1=aug_1,
             aug_2=aug_2,
