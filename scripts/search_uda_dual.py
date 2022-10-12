@@ -15,7 +15,7 @@ DEVICE: int = 0
 
 def search_epochs_uda_dual(epochs, device):
     # set config
-    config.config_name = CONFIG_NAME
+    config.config_name = f'{CONFIG_NAME}_e{epochs}'
     config.Pretraining.batch_size = 256
     config.device = f'cuda:{device}'
     config.Pretraining.use_dual_dataset = True
