@@ -257,6 +257,15 @@ def tune(gnn: src.types.GNNModel):
             lr_scheduler.step()
             logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
 
+    logger.debug('Save the final model')
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
+    torch.save(
+        gnn.state_dict(),
+        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
+    )
+
+
 
 def safe_mean(list_: list[src.types.Numeric]) -> src.types.Numeric:
     return 0 if len(list_) == 0 else round(sum(list_) / len(list_), 1)
@@ -407,3 +416,11 @@ def tune_with_prompt(gnn: src.types.GNNModel):
         if config.Tuning.use_lr_scheduler:
             lr_scheduler.step()
             logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
+
+    logger.debug('Save the final model')
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
+    torch.save(
+        gnn.state_dict(),
+        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
+    )
