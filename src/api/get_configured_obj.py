@@ -16,7 +16,7 @@ def get_configured_logger(name: str) -> types.Logger:
 
 
 def get_configured_pretraining_dataset() -> types.Dataset:
-    dataset = config.TuningDataset.dataset
+    dataset = config.PretrainingDataset.dataset
     return src.dataset.MoleculeAugDataset(
         root=str(config.Paths.datasets / dataset),
         dataset=dataset,
