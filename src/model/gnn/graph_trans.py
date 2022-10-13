@@ -17,5 +17,3 @@ class GraphTrans(_GraphTrans, GNNModel):
         args.gnn_dropout = gnn_dropout
         args.d_model = d_model
         super().__init__(args)
-        self.logger.debug(f'gnn_dropout: {gnn_dropout}')
-        self.logger.debug(f'd_model: {d_model}')
