@@ -139,7 +139,12 @@ def pretrain(model: src.types.PretrainingModel):
     logger.debug('Prepare')
     model.to(config.device)
     if config.Pretraining.use_dual_dataset:
-        dataset = api.get_configured_dual_dataset()
+        if config.Pretraining.dual_ds_version == 1:
+            dataset = api.get_configured_dual_dataset()
+        elif config.Pretraining.dual_ds_version == 2:
+            dataset = api.get_configured_dual_dataset_v2()
+        else:
+            raise ValueError('Dual dataset version should be in {1, 2}')
     else:
         dataset = api.get_configured_pretraining_dataset()
     loader = api.get_configured_pretraining_loader(dataset)

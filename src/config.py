@@ -9,6 +9,8 @@ from typing import Callable, Type
 import torch
 import numpy as np
 
+import src.dataset
+
 datasets = [
     "bbbp",
     "tox21",
@@ -69,6 +71,7 @@ class Pretraining(_Config):
     batch_size: int = 2048
     use_graph_trans: bool = False
     use_dual_dataset: bool = False
+    dual_ds_version: int = 1
 
 
 class Tuning(_Config):

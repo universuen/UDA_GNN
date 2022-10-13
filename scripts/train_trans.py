@@ -14,6 +14,7 @@ if __name__ == '__main__':
     config.GraphTrans.drop_ratio = 0
     config.device = f'cuda:{DEVICE}'
     config.BarlowTwins.sizes = (128, 1200, 1200, 1200)
+    config.Tuning.use_lr_scheduler = False
     if DEBUG:
         api.set_debug_mode()
 

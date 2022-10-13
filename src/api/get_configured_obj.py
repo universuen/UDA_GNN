@@ -41,6 +41,19 @@ def get_configured_dual_dataset():
     )
 
 
+def get_configured_dual_dataset_v2():
+    dataset = config.PretrainingDataset.dataset
+    return src.dataset.DualDatasetV2(
+        dataset_path=str(config.Paths.datasets),
+        dataset=dataset,
+        aug_1=config.PretrainingDataset.aug_1,
+        aug_ratio_1=config.PretrainingDataset.aug_ratio_1,
+        aug_2=config.PretrainingDataset.aug_2,
+        aug_ratio_2=config.PretrainingDataset.aug_ratio_2,
+        use_original=config.PretrainingDataset.use_original,
+    )
+
+
 def get_configured_pretraining_loader(dataset: types.Dataset) -> DataLoader:
     return DataLoader(
         dataset=dataset,
