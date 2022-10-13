@@ -3,7 +3,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'trans'
+CONFIG_NAME: str = 'trans_no_scheduler'
 DEVICE: int = 0
 
 if __name__ == '__main__':
