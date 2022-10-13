@@ -60,8 +60,8 @@ if __name__ == '__main__':
         (10, 0),
         (20, 0),
         (50, 0),
-        (100, 3),
-        (200, 3)
+        (100, 1),
+        (200, 1)
     ]
     for e, d in epochs_device_pairs:
         Process(
