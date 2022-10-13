@@ -52,7 +52,7 @@ def search_epochs_uda_dual(epochs, device):
             new_gnn.load_state_dict(bt_model.gnn.state_dict())
             api.tune(new_gnn)
 
-    api.analyze_results()
+    api.analyze_results_by_ratio()
 
 
 if __name__ == '__main__':
