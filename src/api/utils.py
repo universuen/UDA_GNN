@@ -288,6 +288,37 @@ def analyze_results(steps: list[int] = None):
     results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
 
 
+def analyze_results_by_ratio(ratios: list[int] = None):
+    if ratios is None:
+        ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    results = {
+        k: {
+            kk: []
+            for kk in ratios
+        }
+        for k in [*config.datasets, 'mean']
+    }
+
+    for ds in config.datasets:
+        for ratio in ratios:
+            for seed in config.loop_seeds:
+                try:
+                    history = api.get_configured_history(f'{ds}_te_auc_{seed}')
+                    history.load()
+                    results[ds][ratio].append(history[int(len(history.values) * ratio) - 1] * 100)
+                except (FileNotFoundError, IndexError):
+                    pass
+            results[ds][ratio] = safe_mean(results[ds][ratio])
+            results['mean'][ratio].append(results[ds][ratio])
+
+    for ratio in ratios:
+        results['mean'][ratio] = safe_mean(results['mean'][ratio])
+
+    results = pd.DataFrame.from_dict(results)
+    print(results)
+    results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
+
+
 def tune_with_prompt(gnn: src.types.GNNModel):
     # link the prompt to gnn
     if config.Tuning.use_node_prompt:
