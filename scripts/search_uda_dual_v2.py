@@ -22,6 +22,7 @@ def search_epochs_uda_dual(epochs, device):
     config.Pretraining.use_dual_dataset = True
     config.Pretraining.epochs = epochs
     config.Pretraining.dual_ds_version = 1
+    config.PretrainingLoader.num_workers = 12
     if DEBUG:
         api.set_debug_mode()
 
