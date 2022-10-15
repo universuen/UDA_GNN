@@ -55,9 +55,9 @@ def search_epochs_uda_dual(epochs, device):
 
 if __name__ == '__main__':
     epochs_device_pairs = [
-        (10, 0),
-        (20, 0),
-        (50, 0),
+        (10, 2),
+        (20, 2),
+        (50, 2),
         (100, 3),
         (200, 3)
     ]
