@@ -38,15 +38,30 @@ class DualDataset(Dataset):
         self.half_len = len(self.other_ds)
         self.zinc_ds = random.choices(self.zinc_ds, k=self.half_len)
 
+        self.all_data = []
+        for b1, b2, other in self.other_ds:
+            delattr(b1, 'fold')
+            delattr(b1, 'y')
+            delattr(b2, 'fold')
+            delattr(b2, 'y')
+            self.all_data.append((b1, b2, other))
+        for b1, b2, other in self.zinc_ds:
+            delattr(b1, 'fold')
+            delattr(b1, 'y')
+            delattr(b2, 'fold')
+            delattr(b2, 'y')
+            self.all_data.append((b1, b2, other))
+
     def __len__(self):
         return 2 * self.half_len
 
     def __getitem__(self, item):
-        record = self.zinc_ds[item] if item < self.half_len else self.other_ds[item - self.half_len]
-        b1, b2, other = record
-        # delete extra attributes that may cause crash
-        delattr(b1, 'fold')
-        delattr(b1, 'y')
-        delattr(b2, 'fold')
-        delattr(b2, 'y')
-        return b1, b2, other
+        return self.all_data[item]
+        # record = self.zinc_ds[item] if item < self.half_len else self.other_ds[item - self.half_len]
+        # b1, b2, other = record
+        # # delete extra attributes that may cause crash
+        # delattr(b1, 'fold')
+        # delattr(b1, 'y')
+        # delattr(b2, 'fold')
+        # delattr(b2, 'y')
+        # return b1, b2, other
