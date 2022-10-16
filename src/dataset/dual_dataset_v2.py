@@ -50,8 +50,8 @@ class DualDatasetV2(Dataset):
             raise IndexError
         b1, b2, other = record
         # delete extra attributes that may cause crash
-        # delattr(b1, 'fold')
-        # delattr(b1, 'y')
-        # delattr(b2, 'fold')
-        # delattr(b2, 'y')
+        delattr(b1, 'fold')
+        delattr(b1, 'y')
+        delattr(b2, 'fold')
+        delattr(b2, 'y')
         return b1, b2, other
