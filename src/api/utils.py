@@ -154,7 +154,7 @@ def pretrain(model: src.types.PretrainingModel):
     logger.debug('Training loop')
     for e in range(config.Pretraining.epochs):
         for idx, (b1, b2, _) in enumerate(loader):
-            torch.cuda.empty_cache()
+            # torch.cuda.empty_cache()
             b1.to(config.device)
             b2.to(config.device)
             optimizer.zero_grad()
