@@ -32,7 +32,6 @@ def search_epochs_uda_dual(epochs, device, reverse_datasets):
     config.device = f'cuda:{device}'
     config.Pretraining.use_dual_dataset = True
     config.Pretraining.epochs = epochs
-    config.PretrainingLoader.num_workers = 12
     if DEBUG:
         api.set_debug_mode()
 
