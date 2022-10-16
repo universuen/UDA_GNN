@@ -3,7 +3,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'trans_no_scheduler'
+CONFIG_NAME: str = 'trans_pretrain_bs256'
 DEVICE: int = 0
 
 if __name__ == '__main__':
@@ -15,6 +15,7 @@ if __name__ == '__main__':
     config.device = f'cuda:{DEVICE}'
     config.BarlowTwins.sizes = (128, 1200, 1200, 1200)
     config.Tuning.use_lr_scheduler = False
+    config.Pretraining.batch_size = 256
     if DEBUG:
         api.set_debug_mode()
 
@@ -43,4 +44,4 @@ if __name__ == '__main__':
                 bt_model.gnn.state_dict()
             )
             api.tune(trans_model)
-    api.analyze_results()
+    api.analyze_results_by_ratio()
