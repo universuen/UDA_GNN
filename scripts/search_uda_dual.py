@@ -13,7 +13,19 @@ CONFIG_NAME: str = 'uda_dual'
 DEVICE: int = 0
 
 
-def search_epochs_uda_dual(epochs, device):
+def search_epochs_uda_dual(epochs, device, reverse_datasets):
+    config.datasets = [
+        "muv",
+        "hiv",
+        "toxcast",
+        "tox21",
+        "bbbp",
+        "sider",
+        "clintox",
+        "bace",
+    ]
+    if reverse_datasets:
+        config.datasets.reverse()
     # set config
     config.config_name = f'{CONFIG_NAME}_e{epochs}'
     config.Pretraining.batch_size = 256
@@ -56,14 +68,14 @@ def search_epochs_uda_dual(epochs, device):
 
 if __name__ == '__main__':
     epochs_device_pairs = [
-        (10, 2),
-        (20, 2),
-        (50, 2),
-        (100, 3),
-        (200, 3)
+        (10, 2, True),
+        (20, 2, False),
+        (50, 2, True),
+        (100, 3, False),
+        (200, 3, True),
     ]
-    for e, d in epochs_device_pairs:
+    for e, d, r in epochs_device_pairs:
         Process(
             target=search_epochs_uda_dual,
-            args=(e, d),
+            args=(e, d, r),
         ).start()
