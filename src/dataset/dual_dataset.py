@@ -43,13 +43,6 @@ class DualDataset(Dataset):
 
     def __getitem__(self, item):
         if item < self.half_len:
-            record = self.zinc_ds[self.zinc_idxes[item]]
+            return self.zinc_ds[self.zinc_idxes[item]]
         else:
-            record = self.other_ds[item - self.half_len]
-        b1, b2, other = record
-        # delete extra attributes that may cause crash
-        delattr(b1, 'fold')
-        delattr(b1, 'y')
-        delattr(b2, 'fold')
-        delattr(b2, 'y')
-        return b1, b2, other
+            return self.other_ds[item - self.half_len]
