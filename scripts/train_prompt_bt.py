@@ -9,7 +9,7 @@ from src import api
 
 DEBUG: bool = False
 CONFIG_NAME: str = 'prompts'
-DEVICE: int = 0
+DEVICE: int = 6
 
 
 def tune_with_edge_prompt(device: int):
