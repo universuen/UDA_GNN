@@ -346,7 +346,7 @@ def analyze_results_by_ratio(ratios: list[int] = None):
 def tune_with_prompt(gnn: src.types.GNNModel):
     # link the prompt to gnn
     if config.Tuning.use_node_prompt:
-        gnn.node_prompt = src.model.NodePrompt()
+        gnn.node_prompts = [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]
     if config.Tuning.use_edge_prompt:
         gnn.edge_prompt = src.model.EdgePrompt()
     dataset_name = config.TuningDataset.dataset
@@ -372,7 +372,8 @@ def tune_with_prompt(gnn: src.types.GNNModel):
     ).to(config.device)
     parameters = list(clf.linear.parameters())
     if config.Tuning.use_node_prompt:
-        parameters += list(gnn.node_prompt.parameters())
+        for prompt in gnn.node_prompts:
+            parameters += list(prompt.parameters())
     if config.Tuning.use_edge_prompt:
         parameters += list(gnn.edge_prompt.parameters())
     optimizer = torch.optim.Adam(

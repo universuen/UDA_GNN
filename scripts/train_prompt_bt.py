@@ -8,7 +8,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'prompt_bt'
+CONFIG_NAME: str = 'prompts'
 DEVICE: int = 0
 
 
@@ -84,8 +84,4 @@ if __name__ == '__main__':
     Process(
         target=tune_with_edge_prompt,
         args=(0, ),
-    ).start()
-    Process(
-        target=tune_without_edge_prompt,
-        args=(3,),
     ).start()

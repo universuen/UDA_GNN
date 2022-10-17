@@ -19,7 +19,7 @@ class GNN(_GNN, GNNModel):
             JK=jk,
             drop_ratio=drop_ratio,
         )
-        self.node_prompt = None
+        self.node_prompts = None
         self.edge_prompt = None
 
     def forward(self, *argv):
@@ -33,9 +33,6 @@ class GNN(_GNN, GNNModel):
 
         x = self.x_embedding1(x[:, 0]) + self.x_embedding2(x[:, 1])
 
-        if self.node_prompt is not None:
-            x = self.node_prompt(x)
-
         h_list = [x]
         for layer in range(self.num_layer):
             h = self.gnns[layer](h_list[layer], edge_index, edge_attr, edge_prompt=self.edge_prompt)
@@ -45,6 +42,8 @@ class GNN(_GNN, GNNModel):
                 h = functional.dropout(h, self.drop_ratio, training=self.training)
             else:
                 h = functional.dropout(functional.relu(h), self.drop_ratio, training=self.training)
+            if self.node_prompts is not None:
+                h = self.node_prompts[layer](h)
             h_list.append(h)
 
         node_representation = None
