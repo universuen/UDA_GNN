@@ -35,15 +35,16 @@ class GNN(_GNN, GNNModel):
 
         h_list = [x]
         for layer in range(self.num_layer):
-            h = self.gnns[layer](h_list[layer], edge_index, edge_attr, edge_prompt=self.edge_prompt)
+            h = h_list[layer]
+            if self.node_prompts is not None:
+                h = self.node_prompts[layer](h)
+            h = self.gnns[layer](h, edge_index, edge_attr, edge_prompt=self.edge_prompt)
             h = self.batch_norms[layer](h)
             if layer == self.num_layer - 1:
                 # remove relu for the last layer
                 h = functional.dropout(h, self.drop_ratio, training=self.training)
             else:
                 h = functional.dropout(functional.relu(h), self.drop_ratio, training=self.training)
-            if self.node_prompts is not None:
-                h = self.node_prompts[layer](h)
             h_list.append(h)
 
         node_representation = None

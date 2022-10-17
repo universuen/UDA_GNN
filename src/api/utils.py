@@ -5,7 +5,6 @@ import random
 import torch
 import numpy as np
 import pandas as pd
-import torch_geometric.data
 from torch_geometric.loader import DataLoader
 from torch import nn
 from sklearn.metrics import roc_auc_score
@@ -346,7 +345,9 @@ def analyze_results_by_ratio(ratios: list[int] = None):
 def tune_with_prompt(gnn: src.types.GNNModel):
     # link the prompt to gnn
     if config.Tuning.use_node_prompt:
-        gnn.node_prompts = [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]
+        gnn.node_prompts = nn.ModuleList(
+            [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]
+        )
     if config.Tuning.use_edge_prompt:
         gnn.edge_prompt = src.model.EdgePrompt()
     dataset_name = config.TuningDataset.dataset
