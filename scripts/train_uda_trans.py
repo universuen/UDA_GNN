@@ -7,7 +7,7 @@ from src import api
 
 DEBUG: bool = False
 CONFIG_NAME: str = 'uda_trans_no_scheduler'
-DEVICE: int = 0
+DEVICE: int = 6
 
 if __name__ == '__main__':
     # set general config
