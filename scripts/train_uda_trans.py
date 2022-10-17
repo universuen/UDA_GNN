@@ -37,6 +37,9 @@ if __name__ == '__main__':
             config.PretrainingDataset.dataset = ds
             config.Pretraining.batch_size = 256
             config.GraphTrans.drop_ratio = 0
+            config.Pretraining.epochs = 50
+            config.PretrainingDataset.aug_1 = 'dropN'
+            config.PretrainingDataset.aug_2 = 'dropN'
             trans_model = api.get_configured_graph_trans()
             bt_model = api.get_configured_barlow_twins(trans_model)
             bt_model.load_state_dict(original_bt_states)
