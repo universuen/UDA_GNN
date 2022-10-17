@@ -1,6 +1,8 @@
 import context
-from src import config
 
+import torch
+
+from src import config
 from src import api
 
 DEBUG: bool = False
@@ -24,7 +26,17 @@ if __name__ == '__main__':
     """
     trans_model = api.get_configured_graph_trans()
     bt_model = api.get_configured_barlow_twins(trans_model)
-    api.pretrain(bt_model)
+    try:
+        models_dir = config.Paths.models / config.config_name
+        state_dict = torch.load(
+            models_dir / f'pretraining_model_{config.PretrainingDataset.dataset}_final.pt',
+            map_location=lambda storage, loc: storage,
+        )
+        bt_model.load_state_dict(state_dict)
+        bt_model.to(config.device)
+        bt_model.train()
+    except FileNotFoundError:
+        api.pretrain(bt_model)
 
     original_bt_states = bt_model.state_dict()
     for seed in config.loop_seeds:
