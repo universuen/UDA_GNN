@@ -81,7 +81,4 @@ def tune_without_edge_prompt(device: int):
 
 
 if __name__ == '__main__':
-    Process(
-        target=tune_with_edge_prompt,
-        args=(0, ),
-    ).start()
+    tune_without_edge_prompt(DEVICE)
