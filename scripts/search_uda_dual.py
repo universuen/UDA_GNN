@@ -67,9 +67,9 @@ def search_epochs_uda_dual(epochs, device, reverse_datasets):
 
 if __name__ == '__main__':
     epochs_device_pairs = [
-        (10, 2, True),
-        (20, 2, False),
-        (50, 2, True),
+        # (10, 2, True),
+        # (20, 2, False),
+        (50, 3, True),
         (100, 3, False),
         (200, 3, True),
     ]
