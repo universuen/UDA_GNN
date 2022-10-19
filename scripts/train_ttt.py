@@ -2,14 +2,15 @@ from src import config
 from src import api
 
 DEBUG: bool = True
-CONFIG_NAME: str = 'ttt'
-DEVICE: int = 0
+CONFIG_NAME: str = 'ttt_bbbp'
+DEVICE: int = 1
 
 if __name__ == '__main__':
     # set config
     config.config_name = CONFIG_NAME
     config.GNN.drop_ratio = 0.5
     config.device = f'cuda:{DEVICE}'
+    config.datasets = ['bbbp']
     if DEBUG:
         api.set_debug_mode()
 
