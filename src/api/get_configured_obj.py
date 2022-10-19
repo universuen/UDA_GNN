@@ -74,6 +74,19 @@ def get_configured_tuning_dataset() -> types.Dataset:
     )
 
 
+def get_configured_ttt_dataset(test_dataset) -> types.Dataset:
+    dataset_name = config.TuningDataset.dataset
+    dataset = src.dataset.TTTAugDataset(
+        num_augmentations=config.TestTimeTuning.num_augmentations,
+        root=str(config.Paths.datasets / dataset_name),
+        dataset=dataset_name,
+        aug=config.TestTimeTuning.aug,
+        aug_ratio=config.TestTimeTuning.aug_ratio,
+    )
+    dataset.data = test_dataset.data
+    return dataset
+
+
 def get_configured_tuning_dataloader(dataset: types.Dataset) -> DataLoader:
     return DataLoader(
         dataset=dataset,

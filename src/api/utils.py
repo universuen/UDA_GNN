@@ -8,6 +8,7 @@ import pandas as pd
 from torch_geometric.loader import DataLoader
 from torch import nn
 from sklearn.metrics import roc_auc_score
+from torch_geometric.data import Batch
 
 import src
 from src.original.splitters import scaffold_split
@@ -270,34 +271,35 @@ def safe_mean(list_: list[src.types.Numeric]) -> src.types.Numeric:
 
 
 def analyze_results(steps: list[int] = None):
-    if steps is None:
-        steps = list(range(10, 101, 10))
-    results = {
-        k: {
-            kk: []
-            for kk in steps
-        }
-        for k in [*config.datasets, 'mean']
-    }
-
-    for ds in config.datasets:
-        for step in steps:
-            for seed in config.loop_seeds:
-                try:
-                    history = api.get_configured_history(f'{ds}_te_auc_{seed}')
-                    history.load()
-                    results[ds][step].append(history[step - 1] * 100)
-                except (FileNotFoundError, IndexError):
-                    pass
-            results[ds][step] = safe_mean(results[ds][step])
-            results['mean'][step].append(results[ds][step])
-
-    for step in steps:
-        results['mean'][step] = safe_mean(results['mean'][step])
-
-    results = pd.DataFrame.from_dict(results)
-    print(results)
-    results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
+    return analyze_results_by_ratio()
+    # if steps is None:
+    #     steps = list(range(10, 101, 10))
+    # results = {
+    #     k: {
+    #         kk: []
+    #         for kk in steps
+    #     }
+    #     for k in [*config.datasets, 'mean']
+    # }
+    #
+    # for ds in config.datasets:
+    #     for step in steps:
+    #         for seed in config.loop_seeds:
+    #             try:
+    #                 history = api.get_configured_history(f'{ds}_te_auc_{seed}')
+    #                 history.load()
+    #                 results[ds][step].append(history[step - 1] * 100)
+    #             except (FileNotFoundError, IndexError):
+    #                 pass
+    #         results[ds][step] = safe_mean(results[ds][step])
+    #         results['mean'][step].append(results[ds][step])
+    #
+    # for step in steps:
+    #     results['mean'][step] = safe_mean(results['mean'][step])
+    #
+    # results = pd.DataFrame.from_dict(results)
+    # print(results)
+    # results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
 
 
 def analyze_results_by_ratio(ratios: list[int] = None):
@@ -495,6 +497,170 @@ def tune_linear(gnn: src.types.GNNModel):
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
+        tr_auc_history.save()
+        va_auc_history.save()
+        te_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                loss=loss_history.last_one,
+                tr_auc=tr_auc_history.last_one,
+                va_auc=va_auc_history.last_one,
+                te_auc=te_auc_history.last_one,
+            )
+        )
+        if config.Tuning.use_lr_scheduler:
+            lr_scheduler.step()
+            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
+
+    logger.debug('Save the final model')
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
+    torch.save(
+        gnn.state_dict(),
+        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
+    )
+
+
+def marginal_entropy(outputs):
+    logits = outputs - outputs.logsumexp(dim=-1, keepdim=True)
+    avg_logits = logits.logsumexp(dim=0) - np.log(logits.shape[0])
+    min_real = torch.finfo(avg_logits.dtype).min
+    avg_logits = torch.clamp(avg_logits, min=min_real)
+    return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1), avg_logits
+
+
+def marginal_entropy_bce(outputs):
+    """
+    outputs: shape = [N, C]. N is the number of augmentations, C is the number of binary classes
+    """
+    ps = torch.sigmoid(outputs)  # shape = [N, C]
+    avg_ps = ps.mean(dim=0)  # shape = [C]
+    entropy = - (avg_ps * avg_ps.log() + (1 - avg_ps) * (1 - avg_ps).log()).mean()
+    return entropy
+
+
+def marginal_entropy_bce_v2(outputs):
+    """
+    outputs: shape = [N, C]. N is the number of augmentations, C is the number of binary classes
+    """
+    zeros = torch.zeros_like(outputs)
+    outputs = torch.stack((outputs, zeros), dim=-1)  # shape = [N, C, 2]
+    logits = outputs - outputs.logsumexp(dim=-1, keepdim=True)  # shape = [N, C, 2]
+    avg_logits = logits.logsumexp(dim=0) - np.log(logits.shape[0])  # shape = [C, 2]
+    min_real = torch.finfo(avg_logits.dtype).min
+    avg_logits = torch.clamp(avg_logits, min=min_real)
+    return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean()
+
+
+def ttt_eval(clf_model, loader):
+    clf_model.eval()
+    # back up
+    original_states = clf_model.state_dict()
+
+    y_true = []
+    y_scores = []
+    for data, augmentations in loader:
+        data.to(config.device)
+        augmentations.to(config.device)
+        # adapt
+        optimizer = torch.optim.Adam(
+            params=clf_model.gnn.parameters(),
+            lr=config.Tuning.lr,
+        )
+        for _ in range(config.TestTimeTuning.num_iterations):
+            optimizer.zero_grad()
+            outputs = clf_model(augmentations)
+            loss, _ = marginal_entropy(outputs)
+            loss.backward()
+            optimizer.step()
+        # test
+        with torch.no_grad():
+            pred = clf_model(data.to(config.device))
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        # reset
+        clf_model.load_state_dict(original_states)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+    roc_list = []
+    for i in range(y_true.shape[1]):
+        # AUC is only defined when there is at least one positive data.
+        if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+            is_valid = y_true[:, i] ** 2 > 0
+            roc_list.append(roc_auc_score(
+                (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+    if len(roc_list) < y_true.shape[1]:
+        print("Some target is missing!")
+        print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+    mean_roc = sum(roc_list) / len(roc_list)
+    return mean_roc
+
+
+def test_time_tuning(gnn):
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Tuning')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    tr_loader = get_eval_loader(tr_dataset)
+    va_loader = get_eval_loader(va_dataset)
+    # transform to TTT dataset
+    te_dataset = api.get_configured_ttt_dataset(te_dataset)
+    te_loader = DataLoader(
+        dataset=te_dataset,
+        batch_size=1,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+    )
+    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
+    # set up classifier, optimizer, and criterion
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+    # optimizers
+    optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=optimizer,
+        step_size=30,
+        gamma=0.3,
+    )
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # prepare to record evaluations
+    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
+    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
+    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+
+    logger.debug('Training loop')
+    for e in range(config.Tuning.epochs):
+        clf.train()
+        for idx, batch in enumerate(training_loader):
+            batch = batch.to(config.device)
+            pred = clf(batch)
+            y = batch.y.view(pred.shape).to(torch.float64)
+            is_valid = y ** 2 > 0  # shape = [N, C]
+            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
+            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
+            optimizer.zero_grad()
+            loss = torch.sum(loss_mat) / torch.sum(is_valid)
+            loss.backward()
+            optimizer.step()
+            loss_history.append(loss)
+            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
+        tr_auc_history.append(eval_chem(clf, tr_loader))
+        va_auc_history.append(eval_chem(clf, va_loader))
+        te_auc_history.append(ttt_eval(clf, te_loader))
         tr_auc_history.save()
         va_auc_history.save()
         te_auc_history.save()

@@ -5,7 +5,6 @@ import random
 from pathlib import Path
 from typing import Callable, Type
 
-
 import torch
 import numpy as np
 
@@ -81,6 +80,24 @@ class Tuning(_Config):
     use_lr_scheduler: bool = True
     use_node_prompt: bool = False
     use_edge_prompt: bool = False
+
+
+class TestTimeTuning:
+    num_augmentations: int = 32
+    num_iterations: int = 1
+    aug: str = 'random'
+    aug_ratio: int | float = 0.2
+
+    assert aug in (
+        'dropN',
+        'permE',
+        'maskN',
+        'subgraph',
+        'random',
+        'random_v2',
+        'none',
+    )
+    assert 0 <= aug_ratio <= 1
 
 
 class PretrainingDataset(_Config):
