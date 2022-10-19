@@ -1,3 +1,7 @@
+import context
+
+import torch
+
 from src import config
 from src import api
 
@@ -19,7 +23,13 @@ if __name__ == '__main__':
     """
     gnn_model = api.get_configured_gnn()
     bt_model = api.get_configured_barlow_twins(gnn_model)
-    api.pretrain(bt_model)
+    state_dict = torch.load(
+        config.Paths.models / 'base_bt_model.pt',
+        map_location=lambda storage, loc: storage,
+    )
+    bt_model.load_state_dict(state_dict)
+    bt_model.train()
+    # api.pretrain(bt_model)
     """
     Tuning
     """
