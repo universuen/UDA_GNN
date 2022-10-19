@@ -2,38 +2,32 @@ from __future__ import annotations
 
 from torch_geometric.data import Batch
 
-from src.dataset import MoleculeAugDataset
+from src.original.loader import augment
+from src.dataset.molecule_dataset import MoleculeDataset
+from torch.utils.data import Dataset
 
-
-class TTTAugDataset(MoleculeAugDataset):
+class TTTAugDataset(Dataset):
     def __init__(
             self,
+            dataset: MoleculeDataset,
             num_augmentations: int,
-            root: str,
-            dataset: str = None,
             aug: str = "none",
             aug_ratio: int | float = None,
 
-    ):
-        super().__init__(
-            root=root,
-            dataset=dataset,
-            aug_1=aug,
-            aug_2=aug,
-            aug_ratio_1=aug_ratio,
-            aug_ratio_2=aug_ratio,
-            use_original=False,
-        )
+    ):  
+        self.dataset = dataset
+        self.aug = aug
+        self.aug_ratio = aug_ratio
         self.num_augmentations = num_augmentations
 
-    def get(self, idx):
+    def __len__(self,):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        data = self.dataset[idx]
         augmented_data = [
-            self._MoleculeDataset_aug_v2__get(idx, self.aug1, self.aug_ratio1)
+            augment(data.clone(), self.aug, self.aug_ratio)
             for _ in range(self.num_augmentations)
         ]
         augmented_data = Batch.from_data_list(augmented_data)
-        data = self.get_data(idx)
         return data, augmented_data
-
-    def download(self):
-        return super().download()

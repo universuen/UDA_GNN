@@ -268,6 +268,44 @@ def create_standardized_mol_id(smiles):
         return
 
 
+def augment(data, aug, aug_ratio):
+    if aug == 'dropN':
+        data = drop_nodes3(data, aug_ratio)
+    elif aug == 'permE':
+        data = permute_edges(data, aug_ratio)
+    elif aug == 'maskN':
+        data = mask_nodes(data, aug_ratio)
+    elif aug == 'subgraph':
+        data = subgraph3(data, aug_ratio)
+    elif aug == 'random':
+        n = np.random.randint(2)
+        if n == 0:
+            data = drop_nodes3(data, aug_ratio)
+        elif n == 1:
+            data = subgraph3(data, aug_ratio)
+        else:
+            print('augmentation error')
+            assert False
+    elif aug == 'random_v2':
+        n = np.random.randint(3)
+        if n == 0:
+            data = drop_nodes(data, aug_ratio)
+        elif n == 1:
+            data = subgraph(data, aug_ratio)
+        elif n == 2:
+            data = mask_node_sptoken(data, aug_ratio)
+        else:
+            print('augmentation error')
+            assert False
+    elif aug == 'none':
+        None
+    else:
+        print('augmentation error')
+        assert False
+
+    return data
+
+
 class MoleculeDataset_aug_v2(InMemoryDataset):
     def __init__(self,
                  root,

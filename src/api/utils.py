@@ -11,6 +11,7 @@ from sklearn.metrics import roc_auc_score
 from torch_geometric.data import Batch
 
 import src
+import copy
 from src.original.splitters import scaffold_split
 from src import config, api
 
@@ -538,7 +539,19 @@ def marginal_entropy_bce(outputs):
     ps = torch.sigmoid(outputs)  # shape = [N, C]
     avg_ps = ps.mean(dim=0)  # shape = [C]
     entropy = - (avg_ps * avg_ps.log() + (1 - avg_ps) * (1 - avg_ps).log()).mean()
-    return entropy
+    return entropy, None
+
+
+def confidence_selection(outputs, ratio=0.5):
+    """
+    outputs: shape = [N, C]. N is the number of augmentations, C is the number of binary classes
+    """
+    N = outputs.shape[0]
+    ps = torch.sigmoid(outputs)  # shape = [N, C]
+    avg_entropy = - (ps * ps.log() + (1 - ps) * (1 - ps).log()).mean(1) # shape = [N]
+    _, idx = torch.topk(avg_entropy, int(N * ratio), largest=False)
+    outputs = outputs[idx]
+    return outputs
 
 
 def marginal_entropy_bce_v2(outputs):
@@ -556,32 +569,35 @@ def marginal_entropy_bce_v2(outputs):
 
 def ttt_eval(clf_model, loader):
     clf_model.eval()
+    optimizer = torch.optim.Adam(
+            params=clf_model.parameters(),
+            lr=config.Tuning.lr,
+        )
     # back up
-    original_states = clf_model.state_dict()
-
+    clf_states = copy.deepcopy(clf_model.state_dict())
+    optim_states = copy.deepcopy(optimizer.state_dict())
+    
     y_true = []
     y_scores = []
     for data, augmentations in loader:
         data.to(config.device)
         augmentations.to(config.device)
         # adapt
-        optimizer = torch.optim.Adam(
-            params=clf_model.gnn.parameters(),
-            lr=config.Tuning.lr,
-        )
         for _ in range(config.TestTimeTuning.num_iterations):
             optimizer.zero_grad()
             outputs = clf_model(augmentations)
-            loss, _ = marginal_entropy(outputs)
+            # outputs = confidence_selection(outputs, 0.5)
+            loss, _ = marginal_entropy_bce(outputs)
             loss.backward()
             optimizer.step()
         # test
         with torch.no_grad():
-            pred = clf_model(data.to(config.device))
+            pred = clf_model(data)
         y_true.append(data.y.view(pred.shape))
         y_scores.append(pred)
         # reset
-        clf_model.load_state_dict(original_states)
+        clf_model.load_state_dict(clf_states)
+        optimizer.load_state_dict(optim_states)
 
     y_true = torch.cat(y_true, dim=0).cpu().numpy()
     y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
@@ -612,14 +628,15 @@ def test_time_tuning(gnn):
     )
     tr_loader = get_eval_loader(tr_dataset)
     va_loader = get_eval_loader(va_dataset)
+    te_loader = get_eval_loader(te_dataset)
     # transform to TTT dataset
     te_dataset = api.get_configured_ttt_dataset(te_dataset)
-    te_loader = DataLoader(
+    te_ttt_loader = DataLoader(
         dataset=te_dataset,
         batch_size=1,
-        shuffle=True,
-        num_workers=4,
-        pin_memory=True,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=False,
     )
     training_loader = api.get_configured_tuning_dataloader(tr_dataset)
     # set up classifier, optimizer, and criterion
@@ -641,6 +658,7 @@ def test_time_tuning(gnn):
     tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
     va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+    te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
 
     logger.debug('Training loop')
     for e in range(config.Tuning.epochs):
@@ -660,10 +678,12 @@ def test_time_tuning(gnn):
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
-        te_auc_history.append(ttt_eval(clf, te_loader))
+        te_auc_history.append(eval_chem(clf, te_loader))
+        te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
         tr_auc_history.save()
         va_auc_history.save()
         te_auc_history.save()
+        te_ttt_auc_history.save()
         logger.info(
             training_bar(
                 e,
@@ -672,6 +692,7 @@ def test_time_tuning(gnn):
                 tr_auc=tr_auc_history.last_one,
                 va_auc=va_auc_history.last_one,
                 te_auc=te_auc_history.last_one,
+                te_ttt_auc=te_ttt_auc_history.last_one,
             )
         )
         if config.Tuning.use_lr_scheduler:
