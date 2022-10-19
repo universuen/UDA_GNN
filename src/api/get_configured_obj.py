@@ -122,6 +122,7 @@ def get_configured_history(name: str, values: list = None) -> types.History:
 
 def get_configured_graph_trans() -> types.GNNModel:
     return src.model.gnn.GraphTrans(
-        gnn_dropout=config.GraphTrans.drop_ratio,
+        gnn_dropout=config.GraphTrans.gnn_drop_ratio,
         d_model=config.GraphTrans.d_model,
+        transformer_dropout=config.GraphTrans.trans_drop_ratio,
     )

@@ -9,6 +9,7 @@ class GraphTrans(_GraphTrans, GNNModel):
             self,
             gnn_dropout: float,
             d_model: int,
+            transformer_dropout: float = 0.3,
     ):
         parser = argparse.ArgumentParser()
         GraphTrans.add_args(parser)
@@ -16,4 +17,5 @@ class GraphTrans(_GraphTrans, GNNModel):
         args = parser.parse_args()
         args.gnn_dropout = gnn_dropout
         args.d_model = d_model
+        args.transformer_dropout = transformer_dropout
         super().__init__(args)
