@@ -87,6 +87,8 @@ class TestTimeTuning:
     num_iterations: int = 1
     aug: str = 'random'
     aug_ratio: int | float = 0.2
+    eval_epoch: int = 10
+    save_epoch: int = 10
 
     assert aug in (
         'dropN',
