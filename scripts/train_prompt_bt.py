@@ -27,8 +27,9 @@ def tune_with_edge_prompt(device: int):
     """
     Pretraining
     """
-    gnn_model = api.get_configured_gnn()
-    bt_model = api.get_configured_barlow_twins(gnn_model)
+    bt_model = api.get_configured_barlow_twins(
+        api.get_configured_gnn()
+    )
     state_dict = torch.load(
         config.Paths.models / 'base_bt_model.pt',
         map_location=lambda storage, loc: storage,
@@ -44,6 +45,9 @@ def tune_with_edge_prompt(device: int):
         api.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
+            bt_model = api.get_configured_barlow_twins(
+                api.get_configured_gnn()
+            )
             bt_model.load_state_dict(original_states)
             api.tune_with_prompt(bt_model.gnn)
     api.analyze_results_by_ratio()
@@ -80,6 +84,9 @@ def tune_without_edge_prompt(device: int):
         api.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
+            bt_model = api.get_configured_barlow_twins(
+                api.get_configured_gnn()
+            )
             bt_model.load_state_dict(original_states)
             api.tune_with_prompt(bt_model.gnn)
     api.analyze_results_by_ratio()

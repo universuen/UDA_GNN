@@ -19,4 +19,3 @@ class BarlowTwins(_BarlowTwins, PretrainingModel):
             sizes=sizes,
             use_graph_trans=use_graph_trans,
         )
-
