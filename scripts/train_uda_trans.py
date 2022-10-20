@@ -9,7 +9,7 @@ from src import api
 
 DEBUG: bool = False
 CONFIG_NAME: str = 'fixed_uda_trans_e50_dropN'
-DEVICE: int = 0
+DEVICE: int = 3
 
 if __name__ == '__main__':
     # set general config
@@ -74,4 +74,4 @@ if __name__ == '__main__':
                 bt_model.gnn.state_dict()
             )
             api.tune(trans_model)
-    api.analyze_results()
+    api.analyze_results_by_ratio()
