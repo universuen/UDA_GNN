@@ -8,7 +8,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'uda_trans_e50_dropN'
+CONFIG_NAME: str = 'fixed_uda_trans_e50_dropN'
 DEVICE: int = 0
 
 if __name__ == '__main__':
