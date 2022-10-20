@@ -1,5 +1,7 @@
 import context
 
+from copy import deepcopy
+
 import torch
 
 from src import config
@@ -24,8 +26,9 @@ if __name__ == '__main__':
     """
     Pretraining 1
     """
-    trans_model = api.get_configured_graph_trans()
-    bt_model = api.get_configured_barlow_twins(trans_model)
+    bt_model = api.get_configured_barlow_twins(
+        api.get_configured_graph_trans()
+    )
     try:
         models_dir = config.Paths.models / config.config_name
         state_dict = torch.load(
@@ -38,7 +41,7 @@ if __name__ == '__main__':
     except FileNotFoundError:
         api.pretrain(bt_model)
 
-    original_bt_states = bt_model.state_dict()
+    original_bt_states = deepcopy(bt_model.state_dict())
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
@@ -52,8 +55,9 @@ if __name__ == '__main__':
             config.Pretraining.epochs = 50
             config.PretrainingDataset.aug_1 = 'dropN'
             config.PretrainingDataset.aug_2 = 'dropN'
-            trans_model = api.get_configured_graph_trans()
-            bt_model = api.get_configured_barlow_twins(trans_model)
+            bt_model = api.get_configured_barlow_twins(
+                api.get_configured_graph_trans()
+            )
             bt_model.load_state_dict(original_bt_states)
             api.pretrain(bt_model)
             """

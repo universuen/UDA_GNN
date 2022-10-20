@@ -103,7 +103,7 @@ def get_configured_gnn() -> types.GNNModel:
     ).to(config.device)
 
 
-def get_configured_barlow_twins(gnn: src.types.GNNModel) -> types.PretrainingModel:
+def get_configured_barlow_twins(gnn: src.types.GNNModel) -> src.model.pretraining.BarlowTwins:
     return src.model.pretraining.BarlowTwins(
         model=gnn,
         lambda_=config.BarlowTwins.lambda_,

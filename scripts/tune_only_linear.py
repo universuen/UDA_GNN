@@ -1,6 +1,6 @@
 import context
 
-from multiprocessing import Process
+from copy import deepcopy
 
 import torch
 
@@ -8,7 +8,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'only_linear'
+CONFIG_NAME: str = 'fixed_only_linear'
 DEVICE: int = 3
 
 
@@ -35,10 +35,12 @@ if __name__ == '__main__':
     """
     Tuning
     """
+    original_states = deepcopy(bt_model.state_dict())
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
+            bt_model.load_state_dict(original_states)
             api.tune_linear(bt_model.gnn)
     api.analyze_results_by_ratio()

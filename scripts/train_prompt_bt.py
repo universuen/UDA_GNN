@@ -1,6 +1,7 @@
 import context
 
 from multiprocessing import Process
+from copy import deepcopy
 
 import torch
 
@@ -8,7 +9,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'prompts'
+CONFIG_NAME: str = 'fixed_prompts'
 DEVICE: int = 1
 
 
@@ -37,13 +38,15 @@ def tune_with_edge_prompt(device: int):
     """
     Tuning
     """
+    original_states = deepcopy(bt_model.state_dict())
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
+            bt_model.load_state_dict(original_states)
             api.tune_with_prompt(bt_model.gnn)
-    api.analyze_results()
+    api.analyze_results_by_ratio()
 
 
 def tune_without_edge_prompt(device: int):
@@ -71,14 +74,23 @@ def tune_without_edge_prompt(device: int):
     """
     Tuning
     """
+    original_states = deepcopy(bt_model.state_dict())
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
+            bt_model.load_state_dict(original_states)
             api.tune_with_prompt(bt_model.gnn)
-    api.analyze_results()
+    api.analyze_results_by_ratio()
 
 
 if __name__ == '__main__':
-    tune_without_edge_prompt(DEVICE)
+    Process(
+        target=tune_with_edge_prompt,
+        args=(3,),
+    ).start()
+    Process(
+        target=tune_without_edge_prompt,
+        args=(3,),
+    ).start()

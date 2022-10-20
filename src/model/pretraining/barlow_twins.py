@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import src
-# import config
 from src import types
 from src.original.pretrain_model import BarlowTwins as _BarlowTwins
 from src.model.pretraining import PretrainingModel
@@ -21,5 +19,4 @@ class BarlowTwins(_BarlowTwins, PretrainingModel):
             sizes=sizes,
             use_graph_trans=use_graph_trans,
         )
-
 
