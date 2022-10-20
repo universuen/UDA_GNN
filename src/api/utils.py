@@ -345,6 +345,48 @@ def analyze_results_by_ratio(ratios: list[int] = None):
     results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
 
 
+def analyze_ttt_results_by_ratio(ratios: list[int] = None, item_name: str = 'te_auc'):
+    config.datasets = [
+        "bbbp",
+        "tox21",
+        "toxcast",
+        "sider",
+        "clintox",
+        "muv",
+        "hiv",
+        "bace",
+    ]
+
+    if ratios is None:
+        ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    results = {
+        k: {
+            kk: []
+            for kk in ratios
+        }
+        for k in [*config.datasets, 'mean']
+    }
+
+    for ds in config.datasets:
+        for ratio in ratios:
+            for seed in config.loop_seeds:
+                try:
+                    history = api.get_configured_history(f'{ds}_{item_name}_{seed}')
+                    history.load()
+                    results[ds][ratio].append(history[int(len(history.values) * ratio) - 1] * 100)
+                except (FileNotFoundError, IndexError):
+                    pass
+            results[ds][ratio] = safe_mean(results[ds][ratio])
+            results['mean'][ratio].append(results[ds][ratio])
+
+    for ratio in ratios:
+        results['mean'][ratio] = safe_mean(results['mean'][ratio])
+
+    results = pd.DataFrame.from_dict(results)
+    print(results)
+    results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
+
+
 def tune_with_prompt(gnn: src.types.GNNModel):
     # link the prompt to gnn
     if config.Tuning.use_node_prompt:
@@ -635,8 +677,8 @@ def test_time_tuning(gnn):
         dataset=te_dataset,
         batch_size=1,
         shuffle=False,
-        num_workers=0,
-        pin_memory=False,
+        num_workers=2,
+        pin_memory=True,
     )
     training_loader = api.get_configured_tuning_dataloader(tr_dataset)
     # set up classifier, optimizer, and criterion
@@ -660,6 +702,9 @@ def test_time_tuning(gnn):
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
     te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
 
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
+
     logger.debug('Training loop')
     for e in range(config.Tuning.epochs):
         clf.train()
@@ -679,12 +724,14 @@ def test_time_tuning(gnn):
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
-        te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
+        
         tr_auc_history.save()
         va_auc_history.save()
         te_auc_history.save()
-        te_ttt_auc_history.save()
-        logger.info(
+        if (e + 1) % config.TestTimeTuning.eval_epoch == 0:
+            te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
+            te_ttt_auc_history.save()
+            logger.info(
             training_bar(
                 e,
                 config.Tuning.epochs,
@@ -693,16 +740,105 @@ def test_time_tuning(gnn):
                 va_auc=va_auc_history.last_one,
                 te_auc=te_auc_history.last_one,
                 te_ttt_auc=te_ttt_auc_history.last_one,
+                ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
+                )
             )
-        )
+        else:
+            logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                loss=loss_history.last_one,
+                tr_auc=tr_auc_history.last_one,
+                va_auc=va_auc_history.last_one,
+                te_auc=te_auc_history.last_one,
+                )
+            )
+
         if config.Tuning.use_lr_scheduler:
             lr_scheduler.step()
             logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
 
-    logger.debug('Save the final model')
+
+def tune_and_save_models(gnn):
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Tuning')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    tr_loader = get_eval_loader(tr_dataset)
+    va_loader = get_eval_loader(va_dataset)
+    te_loader = get_eval_loader(te_dataset)
+
+    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
+    # set up classifier, optimizer, and criterion
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+    # optimizers
+    optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=optimizer,
+        step_size=30,
+        gamma=0.3,
+    )
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # prepare to record evaluations
+    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
+    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
+    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+
     models_dir = config.Paths.models / config.config_name
     models_dir.mkdir(exist_ok=True)
-    torch.save(
-        gnn.state_dict(),
-        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
-    )
+
+    logger.debug('Training loop')
+    for e in range(config.Tuning.epochs):
+        clf.train()
+        for idx, batch in enumerate(training_loader):
+            batch = batch.to(config.device)
+            pred = clf(batch)
+            y = batch.y.view(pred.shape).to(torch.float64)
+            is_valid = y ** 2 > 0  # shape = [N, C]
+            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
+            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
+            optimizer.zero_grad()
+            loss = torch.sum(loss_mat) / torch.sum(is_valid)
+            loss.backward()
+            optimizer.step()
+            loss_history.append(loss)
+            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
+        tr_auc_history.append(eval_chem(clf, tr_loader))
+        va_auc_history.append(eval_chem(clf, va_loader))
+        te_auc_history.append(eval_chem(clf, te_loader))
+        
+        tr_auc_history.save()
+        va_auc_history.save()
+        te_auc_history.save()
+        logger.info(
+        training_bar(
+            e,
+            config.Tuning.epochs,
+            loss=loss_history.last_one,
+            tr_auc=tr_auc_history.last_one,
+            va_auc=va_auc_history.last_one,
+            te_auc=te_auc_history.last_one,
+            )
+        )
+
+        if config.Tuning.use_lr_scheduler:
+            lr_scheduler.step()
+            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
+
+        if (e + 1) % config.TestTimeTuning.save_epoch == 0:
+            logger.debug(f'Save the {e+1} epoch model.')
+            torch.save(
+                clf.state_dict(),
+                models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e+1}.pt'
+            )
