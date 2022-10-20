@@ -1,5 +1,6 @@
 import context
 
+from copy import deepcopy
 import torch
 
 from src import config
@@ -35,7 +36,7 @@ def train_with_para(aug: str, epochs: int, batch_size: int, device: int):
     bt_model.to(config.device)
     bt_model.train()
 
-    original_bt_states = bt_model.state_dict()
+    original_bt_states = deepcopy(bt_model.state_dict())
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
