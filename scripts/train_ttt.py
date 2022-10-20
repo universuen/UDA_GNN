@@ -42,6 +42,7 @@ if __name__ == '__main__':
             config.GNN.drop_ratio = 0.5
             config.Tuning.use_lr_scheduler = ds == 'bace' 
             config.Tuning.lr = 1e-4 if ds == 'muv' else 1e-3
+            bt_model.gnn = api.get_configured_gnn()
             bt_model.gnn.load_state_dict(state_dict)
             api.tune_and_save_models(bt_model.gnn)
     api.analyze_results_by_ratio(item_name='te_auc')
