@@ -8,11 +8,10 @@ import pandas as pd
 from torch_geometric.loader import DataLoader
 from torch import nn
 from sklearn.metrics import roc_auc_score
-from torch_geometric.data import Batch
 
 import src
 import copy
-from src.original.splitters import scaffold_split
+from src.original.trans_bt.splitters import scaffold_split
 from src import config, api
 
 
@@ -590,7 +589,7 @@ def confidence_selection(outputs, ratio=0.5):
     """
     N = outputs.shape[0]
     ps = torch.sigmoid(outputs)  # shape = [N, C]
-    avg_entropy = - (ps * ps.log() + (1 - ps) * (1 - ps).log()).mean(1) # shape = [N]
+    avg_entropy = - (ps * ps.log() + (1 - ps) * (1 - ps).log()).mean(1)  # shape = [N]
     _, idx = torch.topk(avg_entropy, int(N * ratio), largest=False)
     outputs = outputs[idx]
     return outputs
@@ -612,13 +611,13 @@ def marginal_entropy_bce_v2(outputs):
 def ttt_eval(clf_model, loader):
     clf_model.eval()
     optimizer = torch.optim.Adam(
-            params=clf_model.parameters(),
-            lr=config.Tuning.lr,
-        )
+        params=clf_model.parameters(),
+        lr=config.Tuning.lr,
+    )
     # back up
     clf_states = copy.deepcopy(clf_model.state_dict())
     optim_states = copy.deepcopy(optimizer.state_dict())
-    
+
     y_true = []
     y_scores = []
     for data, augmentations in loader:
@@ -724,7 +723,7 @@ def test_time_tuning(gnn):
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
-        
+
         tr_auc_history.save()
         va_auc_history.save()
         te_auc_history.save()
@@ -732,26 +731,26 @@ def test_time_tuning(gnn):
             te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
             te_ttt_auc_history.save()
             logger.info(
-            training_bar(
-                e,
-                config.Tuning.epochs,
-                loss=loss_history.last_one,
-                tr_auc=tr_auc_history.last_one,
-                va_auc=va_auc_history.last_one,
-                te_auc=te_auc_history.last_one,
-                te_ttt_auc=te_ttt_auc_history.last_one,
-                ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
+                training_bar(
+                    e,
+                    config.Tuning.epochs,
+                    loss=loss_history.last_one,
+                    tr_auc=tr_auc_history.last_one,
+                    va_auc=va_auc_history.last_one,
+                    te_auc=te_auc_history.last_one,
+                    te_ttt_auc=te_ttt_auc_history.last_one,
+                    ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
                 )
             )
         else:
             logger.info(
-            training_bar(
-                e,
-                config.Tuning.epochs,
-                loss=loss_history.last_one,
-                tr_auc=tr_auc_history.last_one,
-                va_auc=va_auc_history.last_one,
-                te_auc=te_auc_history.last_one,
+                training_bar(
+                    e,
+                    config.Tuning.epochs,
+                    loss=loss_history.last_one,
+                    tr_auc=tr_auc_history.last_one,
+                    va_auc=va_auc_history.last_one,
+                    te_auc=te_auc_history.last_one,
                 )
             )
 
@@ -817,18 +816,18 @@ def tune_and_save_models(gnn):
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
-        
+
         tr_auc_history.save()
         va_auc_history.save()
         te_auc_history.save()
         logger.info(
-        training_bar(
-            e,
-            config.Tuning.epochs,
-            loss=loss_history.last_one,
-            tr_auc=tr_auc_history.last_one,
-            va_auc=va_auc_history.last_one,
-            te_auc=te_auc_history.last_one,
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                loss=loss_history.last_one,
+                tr_auc=tr_auc_history.last_one,
+                va_auc=va_auc_history.last_one,
+                te_auc=te_auc_history.last_one,
             )
         )
 
@@ -837,8 +836,8 @@ def tune_and_save_models(gnn):
             logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
 
         if (e + 1) % config.TestTimeTuning.save_epoch == 0:
-            logger.debug(f'Save the {e+1} epoch model.')
+            logger.debug(f'Save the {e + 1} epoch model.')
             torch.save(
                 clf.state_dict(),
-                models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e+1}.pt'
+                models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt'
             )

@@ -1,6 +1,6 @@
 import argparse
 
-from src.original.graph_trans_model import GraphTrans as _GraphTrans
+from src.original.trans_bt.graph_trans_model import GraphTrans as _GraphTrans
 from src.model.gnn import GNNModel
 
 

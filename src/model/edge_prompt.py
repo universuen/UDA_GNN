@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from src.original.gnn_model import (
+from src.original.trans_bt.gnn_model import (
     num_bond_type,
     num_bond_direction,
 )

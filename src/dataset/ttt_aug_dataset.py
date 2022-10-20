@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from torch_geometric.data import Batch
 
-from src.original.loader import augment
+from src.original.trans_bt.loader import augment
 from src.dataset.molecule_dataset import MoleculeDataset
 from torch.utils.data import Dataset
 

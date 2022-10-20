@@ -1,4 +1,4 @@
-from src.original.loader import MoleculeDataset as _MoleculeDataset
+from src.original.trans_bt.loader import MoleculeDataset as _MoleculeDataset
 from src.dataset import Dataset
 
 

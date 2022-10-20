@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.original.loader import MoleculeDataset_aug_v2
+from src.original.trans_bt.loader import MoleculeDataset_aug_v2
 from src.dataset import Dataset
 
 

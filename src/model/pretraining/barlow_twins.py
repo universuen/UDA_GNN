@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from src import types
-from src.original.pretrain_model import BarlowTwins as _BarlowTwins
+from src.original.trans_bt.pretrain_model import BarlowTwins as _BarlowTwins
 from src.model.pretraining import PretrainingModel
 
 

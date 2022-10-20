@@ -45,4 +45,4 @@ if __name__ == '__main__':
             bt_model.gnn = api.get_configured_gnn()
             bt_model.gnn.load_state_dict(state_dict)
             api.tune_and_save_models(bt_model.gnn)
-    api.analyze_results_by_ratio(item_name='te_auc')
+    api.analyze_ttt_results_by_ratio(item_name='te_auc')

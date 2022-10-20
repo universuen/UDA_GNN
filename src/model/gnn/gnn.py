@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as functional
 
-from src.original.gnn_model import GNN as _GNN
+from src.original.trans_bt.gnn_model import GNN as _GNN
 from src.model.gnn import GNNModel
 
 
