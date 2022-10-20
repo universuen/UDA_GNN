@@ -6,6 +6,7 @@ from src.original.loader import augment
 from src.dataset.molecule_dataset import MoleculeDataset
 from torch.utils.data import Dataset
 
+
 class TTTAugDataset(Dataset):
     def __init__(
             self,
@@ -13,14 +14,13 @@ class TTTAugDataset(Dataset):
             num_augmentations: int,
             aug: str = "none",
             aug_ratio: int | float = None,
-
-    ):  
+    ):
         self.dataset = dataset
         self.aug = aug
         self.aug_ratio = aug_ratio
         self.num_augmentations = num_augmentations
 
-    def __len__(self,):
+    def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, idx):
