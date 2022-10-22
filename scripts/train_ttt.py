@@ -6,13 +6,14 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'graphmae80_models'
+CONFIG_NAME: str = 'test'
 DEVICE: int = 1
 
 if __name__ == '__main__':
     # set config
     config.config_name = CONFIG_NAME
     config.device = f'cuda:{DEVICE}'
+    config.GNN.drop_ratio = 0.5
     config.TestTimeTuning.aug = 'dropN'
     config.TestTimeTuning.num_augmentations = 64
     config.TestTimeTuning.save_epoch = 10
@@ -30,10 +31,10 @@ if __name__ == '__main__':
         map_location=lambda storage, loc: storage,
     )
     bt_model.train()
+    
     """
-    Tuning
+    Tuning and saving the model
     """
-    # original_states = bt_model.gnn.state_dict()
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
@@ -45,4 +46,4 @@ if __name__ == '__main__':
             bt_model.gnn = api.get_configured_gnn()
             bt_model.gnn.load_state_dict(state_dict)
             api.tune_and_save_models(bt_model.gnn)
-    api.analyze_results_by_ratio(item_name='te_auc')
+    api.analyze_ttt_results_by_ratio(item_name='te_auc')
