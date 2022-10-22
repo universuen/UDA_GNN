@@ -89,6 +89,9 @@ class TestTimeTuning:
     aug_ratio: int | float = 0.2
     eval_epoch: int = 10
     save_epoch: int = 10
+    conf_ratio: float = 1.0
+    presaved_model_path: Path = None
+
 
     assert aug in (
         'dropN',
@@ -100,6 +103,7 @@ class TestTimeTuning:
         'none',
     )
     assert 0 <= aug_ratio <= 1
+    assert 0 <= conf_ratio <= 1
 
 
 class PretrainingDataset(_Config):
@@ -155,7 +159,7 @@ class PretrainingLoader(_Config):
 
 
 class TuningLoader(_Config):
-    num_workers: int = 8
+    num_workers: int = 4
     pin_memory: bool = True
 
 

@@ -13,7 +13,7 @@ import src
 import copy
 from src.original.trans_bt.splitters import scaffold_split
 from src import config, api
-
+from pathlib import Path
 
 def log_config_info(logger, config_cls: config.ConfigType, end: bool = True):
     logger.info(f'{config_cls.__name__:*^100}')
@@ -627,8 +627,9 @@ def ttt_eval(clf_model, loader):
         for _ in range(config.TestTimeTuning.num_iterations):
             optimizer.zero_grad()
             outputs = clf_model(augmentations)
-            # outputs = confidence_selection(outputs, 0.5)
-            loss, _ = marginal_entropy_bce(outputs)
+            if config.TestTimeTuning.conf_ratio < 1:
+                outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+            loss, _ = marginal_entropy_bce(outputs, data.y)
             loss.backward()
             optimizer.step()
         # test
@@ -841,3 +842,58 @@ def tune_and_save_models(gnn):
                 clf.state_dict(),
                 models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt'
             )
+
+
+def test_time_tuning_presaved_models(gnn):
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Test Time Tuning')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    te_loader = get_eval_loader(te_dataset)
+    # transform to TTT dataset
+    te_dataset = api.get_configured_ttt_dataset(te_dataset)
+    te_ttt_loader = DataLoader(
+        dataset=te_dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=True,
+    )
+    # set up classifier, optimizer, and criterion
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+    
+    # optimizers
+    # prepare to record evaluations
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+    te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
+    logger.debug('Start loading models and evaluation.')
+    for e in range(9, config.Tuning.epochs+1, config.TestTimeTuning.save_epoch):
+        model_path = Path(config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
+        if not model_path.exists():
+            logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
+            input()
+            break
+        
+        clf.load_state_dict(torch.load(model_path))
+        te_auc_history.append(eval_chem(clf, te_loader))
+        te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
+        te_auc_history.save()
+        te_ttt_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                te_auc=te_auc_history.last_one,
+                te_ttt_auc=te_ttt_auc_history.last_one,
+                ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
+            )
+        )
