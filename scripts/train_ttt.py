@@ -6,8 +6,8 @@ from src import config
 from src import api
 
 DEBUG: bool = True
-CONFIG_NAME: str = 'test'
-DEVICE: int = 1
+CONFIG_NAME: str = 'ttt_add_prompts'
+DEVICE: int = 0
 
 if __name__ == '__main__':
     # set config
