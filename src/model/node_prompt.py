@@ -12,14 +12,14 @@ class NodePrompt(nn.Module):
             torch.randn(1, size)
         )
         glorot(self.value)
-        self.memory = nn.Parameter(torch.randn(1, size))
+        self.memory = None
         self.remember()
 
     def remember(self):
-        self.memory.copy_(self.value)
+        self.memory = self.value.clone()
 
     def reset(self):
-        self.value.copy_(self.memory)
+        self.value = self.memory.clone()
 
     def forward(self, x: torch.Tensor):
         # the operation can be modified later
