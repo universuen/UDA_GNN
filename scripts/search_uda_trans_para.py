@@ -74,7 +74,7 @@ def train_with_para(aug: str, epochs: int, batch_size: int, device: int):
 if __name__ == '__main__':
     from multiprocessing import Process
 
-    devices = [0, 1] * 6
+    devices = [0, 1, 2, 3] * 3
 
     idx = 0
     for aug in ('random', 'dropN'):
