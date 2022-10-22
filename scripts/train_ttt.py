@@ -5,7 +5,7 @@ import torch
 from src import config
 from src import api
 
-DEBUG: bool = True
+DEBUG: bool = False
 CONFIG_NAME: str = 'ttt_add_prompts'
 DEVICE: int = 0
 
