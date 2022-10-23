@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from torch_geometric.nn.inits import glorot
 
 
 class NodePrompt(nn.Module):
@@ -10,13 +11,15 @@ class NodePrompt(nn.Module):
         self.value = torch.nn.Parameter(
             torch.randn(1, size)
         )
-        self.memory = self.value
+        glorot(self.value)
+        self.memory = None
+        self.remember()
 
     def remember(self):
         self.memory = self.value.clone()
 
     def reset(self):
-        self.value = self.memory
+        self.value = self.memory.clone()
 
     def forward(self, x: torch.Tensor):
         # the operation can be modified later

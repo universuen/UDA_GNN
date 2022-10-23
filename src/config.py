@@ -91,6 +91,7 @@ class TestTimeTuning:
     save_epoch: int = 10
     conf_ratio: float = 1.0
     presaved_model_path: Path = None
+    add_prompts: bool = False
 
 
     assert aug in (

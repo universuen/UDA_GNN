@@ -6,8 +6,8 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'test'
-DEVICE: int = 1
+CONFIG_NAME: str = 'ttt_add_prompts'
+DEVICE: int = 0
 
 if __name__ == '__main__':
     # set config
@@ -18,6 +18,7 @@ if __name__ == '__main__':
     config.TestTimeTuning.num_augmentations = 64
     config.TestTimeTuning.save_epoch = 10
     config.TestTimeTuning.eval_epoch = 10
+    config.TestTimeTuning.add_prompts = True
     if DEBUG:
         api.set_debug_mode()
 

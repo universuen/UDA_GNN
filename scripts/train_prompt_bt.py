@@ -9,7 +9,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'fixed_prompts'
+CONFIG_NAME: str = 'prompts_glorot'
 DEVICE: int = 1
 
 
@@ -95,9 +95,9 @@ def tune_without_edge_prompt(device: int):
 if __name__ == '__main__':
     Process(
         target=tune_with_edge_prompt,
-        args=(3,),
+        args=(0,),
     ).start()
     Process(
         target=tune_without_edge_prompt,
-        args=(3,),
+        args=(1,),
     ).start()

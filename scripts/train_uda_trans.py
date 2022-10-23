@@ -9,7 +9,7 @@ from src import api
 
 DEBUG: bool = False
 CONFIG_NAME: str = 'fixed_uda_trans_e50_dropN'
-DEVICE: int = 3
+DEVICE: int = 0
 
 if __name__ == '__main__':
     # set general config

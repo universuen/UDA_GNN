@@ -15,6 +15,7 @@ from src.original.trans_bt.splitters import scaffold_split
 from src import config, api
 from pathlib import Path
 
+
 def log_config_info(logger, config_cls: config.ConfigType, end: bool = True):
     logger.info(f'{config_cls.__name__:*^100}')
     for k, v in config_cls.to_dict().items():
@@ -776,6 +777,10 @@ def test_time_tuning(gnn):
 
 
 def tune_and_save_models(gnn):
+    if config.TestTimeTuning.add_prompts:
+        gnn.node_prompts = nn.ModuleList(
+            [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]
+        )
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
@@ -885,7 +890,7 @@ def test_time_tuning_presaved_models(gnn):
         dataset=config.TuningDataset.dataset,
         use_graph_trans=config.Pretraining.use_graph_trans,
     ).to(config.device)
-    
+
     # optimizers
     # prepare to record evaluations
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
@@ -893,13 +898,14 @@ def test_time_tuning_presaved_models(gnn):
     te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
 
     logger.debug('Start loading models and evaluation.')
-    for e in range(9, config.Tuning.epochs+1, config.TestTimeTuning.save_epoch):
-        model_path = Path(config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
+    for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
+        model_path = Path(
+            config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
         if not model_path.exists():
             logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
             input()
             break
-        
+
         clf.load_state_dict(torch.load(model_path))
         te_auc_history.append(eval_chem(clf, te_loader))
         ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
