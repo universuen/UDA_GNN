@@ -75,10 +75,14 @@ def get_configured_tuning_dataset() -> types.Dataset:
 
 
 def get_configured_ttt_dataset(test_dataset) -> types.Dataset:
+    if config.TestTimeTuning.aug == 'dropout':
+        aug = 'none'
+    else:
+        aug = config.TestTimeTuning.aug
     dataset = src.dataset.TTTAugDataset(
         dataset=test_dataset,
         num_augmentations=config.TestTimeTuning.num_augmentations,
-        aug=config.TestTimeTuning.aug,
+        aug=aug,
         aug_ratio=config.TestTimeTuning.aug_ratio,
     )
     return dataset

@@ -100,6 +100,7 @@ class TestTimeTuning:
         'subgraph',
         'random',
         'random_v2',
+        'dropout',
         'none',
     )
     assert 0 <= aug_ratio <= 1

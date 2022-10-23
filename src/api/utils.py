@@ -580,7 +580,8 @@ def marginal_entropy_bce(outputs):
     ps = torch.sigmoid(outputs)  # shape = [N, C]
     avg_ps = ps.mean(dim=0)  # shape = [C]
     entropy = - (avg_ps * avg_ps.log() + (1 - avg_ps) * (1 - avg_ps).log()).mean()
-    return entropy, None
+    aug_pre = avg_ps.reshape(1, -1).detach() # shape = [1, C]
+    return entropy, aug_pre
 
 
 def confidence_selection(outputs, ratio=0.5):
@@ -605,10 +606,26 @@ def marginal_entropy_bce_v2(outputs):
     avg_logits = logits.logsumexp(dim=0) - np.log(logits.shape[0])  # shape = [C, 2]
     min_real = torch.finfo(avg_logits.dtype).min
     avg_logits = torch.clamp(avg_logits, min=min_real)
-    return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean()
+    avg_ps = avg_logits[:, 0].detach().reshape(1, -1).exp()
+    return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
 
 
 def ttt_eval(clf_model, loader):
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+    
     clf_model.eval()
     optimizer = torch.optim.Adam(
         params=clf_model.parameters(),
@@ -620,7 +637,11 @@ def ttt_eval(clf_model, loader):
 
     y_true = []
     y_scores = []
+    y_aug_scores = []
     for data, augmentations in loader:
+        if config.TestTimeTuning.aug == 'dropout':
+            clf_model.train()
+
         data.to(config.device)
         augmentations.to(config.device)
         # adapt
@@ -629,34 +650,28 @@ def ttt_eval(clf_model, loader):
             outputs = clf_model(augmentations)
             if config.TestTimeTuning.conf_ratio < 1:
                 outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
-            loss, _ = marginal_entropy_bce(outputs, data.y)
+            # loss, aug_pre = marginal_entropy_bce_v2(outputs)
+            loss, aug_pre = marginal_entropy_bce_v2(outputs)
             loss.backward()
             optimizer.step()
         # test
         with torch.no_grad():
+            clf_model.eval()
             pred = clf_model(data)
         y_true.append(data.y.view(pred.shape))
         y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
         # reset
         clf_model.load_state_dict(clf_states)
         optimizer.load_state_dict(optim_states)
 
     y_true = torch.cat(y_true, dim=0).cpu().numpy()
     y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
-    roc_list = []
-    for i in range(y_true.shape[1]):
-        # AUC is only defined when there is at least one positive data.
-        if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
-            is_valid = y_true[:, i] ** 2 > 0
-            roc_list.append(roc_auc_score(
-                (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
 
-    if len(roc_list) < y_true.shape[1]:
-        print("Some target is missing!")
-        print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
-    mean_roc = sum(roc_list) / len(roc_list)
-    return mean_roc
-
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+    return mean_roc, mean_aug_roc
 
 def test_time_tuning(gnn):
     dataset_name = config.TuningDataset.dataset
@@ -875,6 +890,8 @@ def test_time_tuning_presaved_models(gnn):
     # prepare to record evaluations
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
     te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
+    te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
+
     logger.debug('Start loading models and evaluation.')
     for e in range(9, config.Tuning.epochs+1, config.TestTimeTuning.save_epoch):
         model_path = Path(config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
@@ -885,15 +902,21 @@ def test_time_tuning_presaved_models(gnn):
         
         clf.load_state_dict(torch.load(model_path))
         te_auc_history.append(eval_chem(clf, te_loader))
-        te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
+        ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
+        te_ttt_auc_history.append(ttt_auc)
+        te_aug_auc_history.append(aug_auc)
+
         te_auc_history.save()
         te_ttt_auc_history.save()
+        te_aug_auc_history.save()
         logger.info(
             training_bar(
                 e,
                 config.Tuning.epochs,
                 te_auc=te_auc_history.last_one,
                 te_ttt_auc=te_ttt_auc_history.last_one,
-                ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
+                ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one,
+                te_aug_auc=te_aug_auc_history.last_one,
+                aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
             )
         )

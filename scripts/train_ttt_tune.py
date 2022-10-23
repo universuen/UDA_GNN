@@ -9,12 +9,13 @@ from src import api
 DEBUG: bool = False
 
 
-def search_ttt_para(aug, conf_ratio, num_aug, device):
+def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
     # set config
-    config.config_name = f'test_ttt_{num_aug}{aug}_c{conf_ratio}'
+    config.config_name = f'test_ttt_{num_aug}{aug}{aug_ratio}_c{conf_ratio}'
     config.device = f'cuda:{device}'
     config.GNN.drop_ratio = 0.5
     config.TestTimeTuning.aug = aug
+    config.TestTimeTuning.aug_ratio = aug_ratio
     config.TestTimeTuning.num_augmentations = num_aug
     config.TestTimeTuning.conf_ratio = conf_ratio
     config.TestTimeTuning.presaved_model_path = './data/models/graphmae80_models_v2'
@@ -28,7 +29,8 @@ def search_ttt_para(aug, conf_ratio, num_aug, device):
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
-        for ds in config.datasets:
+        # for ds in config.datasets:
+        for ds in ['sider']:
             config.TuningDataset.dataset = ds
             config.GNN.drop_ratio = 0.5
             config.Tuning.use_lr_scheduler = ds == 'bace' 
@@ -39,14 +41,15 @@ def search_ttt_para(aug, conf_ratio, num_aug, device):
 
 if __name__ == '__main__':
     # if False:
-    for aug in ['random', 'dropN']:
-        # for conf_ratio in [0.5, 1]:
-        Process(
-                target=search_ttt_para,
-                args=(aug, 0.5, 32, 2),
-                ).start()
-        Process(
-                target=search_ttt_para,
-                args=(aug, 1.0, 32, 3),
-                ).start()
+    # for aug in ['random', 'dropN']:
+    #     # for conf_ratio in [0.5, 1]:
+    #     Process(
+    #             target=search_ttt_para,
+    #             args=(aug, 0.5, 32, 2),
+    #             ).start()
+    #     Process(
+    #             target=search_ttt_para,
+    #             args=(aug, 1.0, 32, 3),
+    #             ).start()
+    search_ttt_para('subgraph', 0.9, 1, 32, 3)
     # search_ttt_para('random', 1, 32, 3)
