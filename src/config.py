@@ -102,6 +102,7 @@ class TestTimeTuning:
         'random',
         'random_v2',
         'dropout',
+        'dropE',
         'none',
     )
     assert 0 <= aug_ratio <= 1

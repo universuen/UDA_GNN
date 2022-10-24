@@ -11,7 +11,7 @@ DEBUG: bool = False
 
 def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
     # set config
-    config.config_name = f'test_ttt_{num_aug}{aug}{aug_ratio}_c{conf_ratio}'
+    config.config_name = f'ttt_{num_aug}{aug}{aug_ratio}_c{conf_ratio}'
     config.device = f'cuda:{device}'
     config.GNN.drop_ratio = 0.5
     config.TestTimeTuning.aug = aug
@@ -29,10 +29,10 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
-        # for ds in config.datasets:
-        for ds in ['sider']:
+        for ds in config.datasets:
             config.TuningDataset.dataset = ds
-            config.GNN.drop_ratio = 0.5
+            if config.TestTimeTuning.aug == 'dropout':
+                config.GNN.drop_ratio = config.TestTimeTuning.aug_ratio
             config.Tuning.use_lr_scheduler = ds == 'bace' 
             config.Tuning.lr = 1e-4 if ds == 'muv' else 1e-3
             gnn = api.get_configured_gnn()
@@ -51,5 +51,15 @@ if __name__ == '__main__':
     #             target=search_ttt_para,
     #             args=(aug, 1.0, 32, 3),
     #             ).start()
-    search_ttt_para('subgraph', 0.9, 1, 32, 3)
-    # search_ttt_para('random', 1, 32, 3)
+    
+    Process(target=search_ttt_para, args=('dropN', 0.05, 1, 32, 0)).start()
+    # Process(target=search_ttt_para, args=('subgraph', 0.95, 1, 32, 5)).start()
+    Process(target=search_ttt_para, args=('dropE', 0.1, 1, 32, 2)).start()
+    Process(target=search_ttt_para, args=('dropE', 0.05, 1, 32, 2)).start()
+
+    if False:
+        Process(target=search_ttt_para, args=('dropout', 0.1, 1, 32, 0)).start()
+        Process(target=search_ttt_para, args=('dropout', 0.2, 1, 32, 0)).start()
+        Process(target=search_ttt_para, args=('dropout', 0.3, 1, 32, 1)).start()
+        Process(target=search_ttt_para, args=('dropout', 0.05, 1, 32, 1)).start()
+    

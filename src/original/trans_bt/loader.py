@@ -277,6 +277,8 @@ def augment(data, aug, aug_ratio):
         data = mask_nodes(data, aug_ratio)
     elif aug == 'subgraph':
         data = subgraph3(data, aug_ratio)
+    elif aug == 'dropE':
+        data = drop_edges(data, aug_ratio)
     elif aug == 'random':
         n = np.random.randint(2)
         if n == 0:
@@ -1496,6 +1498,16 @@ def permute_edges(data, aug_ratio):
         (edge_index[:, np.random.choice(edge_num, (edge_num - permute_num), replace=False)], idx_add), axis=1)
     data.edge_index = torch.tensor(edge_index)
 
+    return data
+
+
+
+def drop_edges(data, aug_ratio):
+    _, edge_num = data.edge_index.size()
+    keep_num = int(edge_num * (1-aug_ratio))
+    keep_idx = torch.LongTensor(random.sample(range(edge_num), keep_num))
+    data.edge_index = data.edge_index[:, keep_idx]
+    data.edge_attr = data.edge_attr[keep_idx]
     return data
 
 

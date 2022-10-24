@@ -611,6 +611,11 @@ def marginal_entropy_bce_v2(outputs):
     return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
 
 
+def freeze_bn(model):
+    for module in model.modules():
+        if isinstance(module, nn.BatchNorm1d) or isinstance(module, nn.BatchNorm2d):
+            module.eval()
+
 def ttt_eval(clf_model, loader):
     def _evaluate(y_true, y_scores):
         roc_list = []
@@ -642,10 +647,13 @@ def ttt_eval(clf_model, loader):
     for data, augmentations in loader:
         if config.TestTimeTuning.aug == 'dropout':
             clf_model.train()
+            freeze_bn(clf_model)
 
         data.to(config.device)
         augmentations.to(config.device)
+        
         # adapt
+        aug_pre_list = []
         for _ in range(config.TestTimeTuning.num_iterations):
             optimizer.zero_grad()
             outputs = clf_model(augmentations)
@@ -655,6 +663,9 @@ def ttt_eval(clf_model, loader):
             loss, aug_pre = marginal_entropy_bce_v2(outputs)
             loss.backward()
             optimizer.step()
+            aug_pre_list.append(aug_pre)
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
         # test
         with torch.no_grad():
             clf_model.eval()
@@ -906,7 +917,7 @@ def test_time_tuning_presaved_models(gnn):
             input()
             break
 
-        clf.load_state_dict(torch.load(model_path))
+        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         te_auc_history.append(eval_chem(clf, te_loader))
         ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
         te_ttt_auc_history.append(ttt_auc)
