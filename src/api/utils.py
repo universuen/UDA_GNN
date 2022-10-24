@@ -37,14 +37,14 @@ def log_all_config(logger):
 def set_debug_mode():
     print('**********DEBUG MODE IS ON!**********')
     config.config_name = 'debug'
-    config.Pretraining.epochs = 1
-    config.Pretraining.batch_size = 100
-    config.PretrainingDataset.dataset = 'bbbp'
-    config.Tuning.epochs = 2
+    # config.Pretraining.epochs = 1
+    # config.Pretraining.batch_size = 100
+    # config.PretrainingDataset.dataset = 'bbbp'
+    # config.Tuning.epochs = 2
     config.Logger.level = 'DEBUG'
     config.PretrainingLoader.num_workers = 0
     config.TuningLoader.num_workers = 0
-    config.device = 'cuda:0'
+    config.device = 'cpu'
     config.loop_seeds = [0, 1]
 
 
@@ -128,143 +128,6 @@ def eval_chem(model, loader) -> float:
         print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
     mean_roc = sum(roc_list) / len(roc_list)
     return mean_roc
-
-
-def pretrain(model: src.types.PretrainingModel):
-    logger = api.get_configured_logger(
-        name=f'pretrain_{config.PretrainingDataset.dataset}'
-    )
-    log_all_config(logger)
-    logger.info('Started Pretraining')
-
-    logger.debug('Prepare')
-    model.to(config.device)
-    if config.Pretraining.use_dual_dataset:
-        if config.Pretraining.dual_ds_version == 1:
-            dataset = api.get_configured_dual_dataset()
-        elif config.Pretraining.dual_ds_version == 2:
-            dataset = api.get_configured_dual_dataset_v2()
-        else:
-            raise ValueError('Dual dataset version should be in {1, 2}')
-    else:
-        dataset = api.get_configured_pretraining_dataset()
-    loader = api.get_configured_pretraining_loader(dataset)
-    optimizer = torch.optim.Adam(model.parameters(), config.Pretraining.lr)
-    loss_history = api.get_configured_history('pretraining_losses')
-
-    logger.debug('Training loop')
-    for e in range(config.Pretraining.epochs):
-        for idx, (b1, b2, _) in enumerate(loader):
-            # torch.cuda.empty_cache()
-            b1.to(config.device)
-            b2.to(config.device)
-            optimizer.zero_grad()
-            loss = model(b1, b2)
-            loss.backward()
-            optimizer.step()
-            loss_history.append(loss)
-            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(loader)}')
-        logger.info(training_bar(e, config.Pretraining.epochs, loss=loss_history.last_one))
-        if (e + 1) % 20 == 0:
-            models_dir = config.Paths.models / config.config_name
-            models_dir.mkdir(exist_ok=True)
-            torch.save(
-                model.state_dict(),
-                models_dir / f'pretraining_model_{config.PretrainingDataset.dataset}_{e + 1}.pt'
-            )
-            logger.info(
-                f"model saved at {models_dir / f'pretraining_model_{config.PretrainingDataset.dataset}_{e + 1}.pt'}"
-            )
-
-    logger.debug('Save the final model')
-    models_dir = config.Paths.models / config.config_name
-    models_dir.mkdir(exist_ok=True)
-    torch.save(
-        model.state_dict(),
-        models_dir / f'pretraining_model_{config.PretrainingDataset.dataset}_final.pt'
-    )
-    loss_history.save()
-
-
-def tune(gnn: src.types.GNNModel):
-    dataset_name = config.TuningDataset.dataset
-    logger = api.get_configured_logger(
-        name=f'tune_{dataset_name}',
-    )
-    log_all_config(logger)
-    logger.info('Started Tuning')
-
-    logger.debug('Prepare')
-    tr_dataset, va_dataset, te_dataset = split_dataset(
-        api.get_configured_tuning_dataset()
-    )
-    # set up dataloaders
-    tr_loader = get_eval_loader(tr_dataset)
-    va_loader = get_eval_loader(va_dataset)
-    te_loader = get_eval_loader(te_dataset)
-    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
-    # set up classifier, optimizer, and criterion
-    clf = src.model.GraphClf(
-        gnn=gnn,
-        dataset=config.TuningDataset.dataset,
-        use_graph_trans=config.Pretraining.use_graph_trans,
-    ).to(config.device)
-    optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer=optimizer,
-        step_size=30,
-        gamma=0.3,
-    )
-    criterion = nn.BCEWithLogitsLoss(reduction="none")
-    # prepare to record evaluations
-    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
-    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
-    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
-    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
-
-    logger.debug('Training loop')
-    for e in range(config.Tuning.epochs):
-        clf.train()
-        for idx, batch in enumerate(training_loader):
-            batch = batch.to(config.device)
-            pred = clf(batch)
-            y = batch.y.view(pred.shape).to(torch.float64)
-            is_valid = y ** 2 > 0  # shape = [N, C]
-            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
-            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
-            optimizer.zero_grad()
-            loss = torch.sum(loss_mat) / torch.sum(is_valid)
-            loss.backward()
-            optimizer.step()
-            loss_history.append(loss)
-            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
-        tr_auc_history.append(eval_chem(clf, tr_loader))
-        va_auc_history.append(eval_chem(clf, va_loader))
-        te_auc_history.append(eval_chem(clf, te_loader))
-        tr_auc_history.save()
-        va_auc_history.save()
-        te_auc_history.save()
-        logger.info(
-            training_bar(
-                e,
-                config.Tuning.epochs,
-                loss=loss_history.last_one,
-                tr_auc=tr_auc_history.last_one,
-                va_auc=va_auc_history.last_one,
-                te_auc=te_auc_history.last_one,
-            )
-        )
-        if config.Tuning.use_lr_scheduler:
-            lr_scheduler.step()
-            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
-
-    logger.debug('Save the final model')
-    models_dir = config.Paths.models / config.config_name
-    models_dir.mkdir(exist_ok=True)
-    torch.save(
-        gnn.state_dict(),
-        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
-    )
 
 
 def safe_mean(list_: list[src.types.Numeric]) -> src.types.Numeric:
@@ -387,185 +250,6 @@ def analyze_ttt_results_by_ratio(ratios: list[int] = None, item_name: str = 'te_
     results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
 
 
-def tune_with_prompt(gnn: src.types.GNNModel):
-    # link the prompt to gnn
-    if config.Tuning.use_node_prompt:
-        gnn.node_prompts = nn.ModuleList(
-            [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]
-        )
-    if config.Tuning.use_edge_prompt:
-        gnn.edge_prompt = src.model.EdgePrompt()
-    dataset_name = config.TuningDataset.dataset
-    logger = api.get_configured_logger(
-        name=f'tune_{dataset_name}',
-    )
-    log_all_config(logger)
-    logger.info('Started Tuning')
-
-    tr_dataset, va_dataset, te_dataset = split_dataset(
-        api.get_configured_tuning_dataset()
-    )
-    # set up dataloaders
-    tr_loader = get_eval_loader(tr_dataset)
-    va_loader = get_eval_loader(va_dataset)
-    te_loader = get_eval_loader(te_dataset)
-    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
-    # set up classifier, optimizer, and criterion
-    clf = src.model.GraphClf(
-        gnn=gnn,
-        dataset=config.TuningDataset.dataset,
-        use_graph_trans=config.Pretraining.use_graph_trans,
-    ).to(config.device)
-    parameters = list(clf.linear.parameters())
-    if config.Tuning.use_node_prompt:
-        for prompt in gnn.node_prompts:
-            parameters += list(prompt.parameters())
-    if config.Tuning.use_edge_prompt:
-        parameters += list(gnn.edge_prompt.parameters())
-    optimizer = torch.optim.Adam(
-        parameters,
-        config.Tuning.lr
-    )
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer=optimizer,
-        step_size=30,
-        gamma=0.3,
-    )
-    criterion = nn.BCEWithLogitsLoss(reduction="none")
-    # prepare to record evaluations
-    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
-    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
-    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
-    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
-
-    for e in range(config.Tuning.epochs):
-        clf.train()
-        for idx, batch in enumerate(training_loader):
-            batch = batch.to(config.device)
-            # apply prompt
-            pred = clf(batch)
-            y = batch.y.view(pred.shape).to(torch.float64)
-            is_valid = y ** 2 > 0  # shape = [N, C]
-            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
-            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
-            optimizer.zero_grad()
-            loss = torch.sum(loss_mat) / torch.sum(is_valid)
-            loss.backward()
-            optimizer.step()
-            loss_history.append(loss)
-            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
-        tr_auc_history.append(eval_chem(clf, tr_loader))
-        va_auc_history.append(eval_chem(clf, va_loader))
-        te_auc_history.append(eval_chem(clf, te_loader))
-        tr_auc_history.save()
-        va_auc_history.save()
-        te_auc_history.save()
-        logger.info(
-            training_bar(
-                e,
-                config.Tuning.epochs,
-                loss=loss_history.last_one,
-                tr_auc=tr_auc_history.last_one,
-                va_auc=va_auc_history.last_one,
-                te_auc=te_auc_history.last_one,
-            )
-        )
-        if config.Tuning.use_lr_scheduler:
-            lr_scheduler.step()
-            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
-
-    logger.debug('Save the final model')
-    models_dir = config.Paths.models / config.config_name
-    models_dir.mkdir(exist_ok=True)
-    torch.save(
-        gnn.state_dict(),
-        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
-    )
-
-
-def tune_linear(gnn: src.types.GNNModel):
-    dataset_name = config.TuningDataset.dataset
-    logger = api.get_configured_logger(
-        name=f'tune_{dataset_name}',
-    )
-    log_all_config(logger)
-    logger.info('Started Tuning')
-
-    tr_dataset, va_dataset, te_dataset = split_dataset(
-        api.get_configured_tuning_dataset()
-    )
-    # set up dataloaders
-    tr_loader = get_eval_loader(tr_dataset)
-    va_loader = get_eval_loader(va_dataset)
-    te_loader = get_eval_loader(te_dataset)
-    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
-    # set up classifier, optimizer, and criterion
-    clf = src.model.GraphClf(
-        gnn=gnn,
-        dataset=config.TuningDataset.dataset,
-        use_graph_trans=config.Pretraining.use_graph_trans,
-    ).to(config.device)
-    optimizer = torch.optim.Adam(
-        clf.linear.parameters(),
-        config.Tuning.lr
-    )
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer=optimizer,
-        step_size=30,
-        gamma=0.3,
-    )
-    criterion = nn.BCEWithLogitsLoss(reduction="none")
-    # prepare to record evaluations
-    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
-    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
-    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
-    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
-
-    for e in range(config.Tuning.epochs):
-        clf.train()
-        for idx, batch in enumerate(training_loader):
-            batch = batch.to(config.device)
-            # apply prompt
-            pred = clf(batch)
-            y = batch.y.view(pred.shape).to(torch.float64)
-            is_valid = y ** 2 > 0  # shape = [N, C]
-            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
-            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
-            optimizer.zero_grad()
-            loss = torch.sum(loss_mat) / torch.sum(is_valid)
-            loss.backward()
-            optimizer.step()
-            loss_history.append(loss)
-            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
-        tr_auc_history.append(eval_chem(clf, tr_loader))
-        va_auc_history.append(eval_chem(clf, va_loader))
-        te_auc_history.append(eval_chem(clf, te_loader))
-        tr_auc_history.save()
-        va_auc_history.save()
-        te_auc_history.save()
-        logger.info(
-            training_bar(
-                e,
-                config.Tuning.epochs,
-                loss=loss_history.last_one,
-                tr_auc=tr_auc_history.last_one,
-                va_auc=va_auc_history.last_one,
-                te_auc=te_auc_history.last_one,
-            )
-        )
-        if config.Tuning.use_lr_scheduler:
-            lr_scheduler.step()
-            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
-
-    logger.debug('Save the final model')
-    models_dir = config.Paths.models / config.config_name
-    models_dir.mkdir(exist_ok=True)
-    torch.save(
-        gnn.state_dict(),
-        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
-    )
-
-
 def marginal_entropy(outputs):
     logits = outputs - outputs.logsumexp(dim=-1, keepdim=True)
     avg_logits = logits.logsumexp(dim=0) - np.log(logits.shape[0])
@@ -581,7 +265,7 @@ def marginal_entropy_bce(outputs):
     ps = torch.sigmoid(outputs)  # shape = [N, C]
     avg_ps = ps.mean(dim=0)  # shape = [C]
     entropy = - (avg_ps * avg_ps.log() + (1 - avg_ps) * (1 - avg_ps).log()).mean()
-    aug_pre = avg_ps.reshape(1, -1).detach() # shape = [1, C]
+    aug_pre = avg_ps.reshape(1, -1).detach()  # shape = [1, C]
     return entropy, aug_pre
 
 
@@ -616,6 +300,7 @@ def freeze_bn(model):
         if isinstance(module, nn.BatchNorm1d) or isinstance(module, nn.BatchNorm2d):
             module.eval()
 
+
 def ttt_eval(clf_model, loader):
     def _evaluate(y_true, y_scores):
         roc_list = []
@@ -631,7 +316,7 @@ def ttt_eval(clf_model, loader):
             print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
         mean_roc = sum(roc_list) / len(roc_list)
         return mean_roc
-    
+
     clf_model.eval()
     optimizer = torch.optim.Adam(
         params=clf_model.parameters(),
@@ -651,7 +336,7 @@ def ttt_eval(clf_model, loader):
 
         data.to(config.device)
         augmentations.to(config.device)
-        
+
         # adapt
         aug_pre_list = []
         for _ in range(config.TestTimeTuning.num_iterations):
@@ -679,11 +364,13 @@ def ttt_eval(clf_model, loader):
 
     y_true = torch.cat(y_true, dim=0).cpu().numpy()
     y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
     y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
 
     mean_roc = _evaluate(y_true, y_scores)
     mean_aug_roc = _evaluate(y_true, y_aug_scores)
     return mean_roc, mean_aug_roc
+
 
 def test_time_tuning(gnn):
     dataset_name = config.TuningDataset.dataset
