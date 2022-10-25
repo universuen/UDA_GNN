@@ -37,10 +37,10 @@ def log_all_config(logger):
 def set_debug_mode():
     print('**********DEBUG MODE IS ON!**********')
     config.config_name = 'debug'
-    # config.Pretraining.epochs = 1
-    # config.Pretraining.batch_size = 100
-    # config.PretrainingDataset.dataset = 'bbbp'
-    # config.Tuning.epochs = 2
+    config.Pretraining.epochs = 1
+    config.Pretraining.batch_size = 100
+    config.PretrainingDataset.dataset = 'bbbp'
+    config.Tuning.epochs = 2
     config.Logger.level = 'DEBUG'
     config.PretrainingLoader.num_workers = 0
     config.TuningLoader.num_workers = 0
