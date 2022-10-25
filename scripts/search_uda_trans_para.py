@@ -74,14 +74,17 @@ def train_with_para(aug: str, epochs: int, batch_size: int, device: int):
 if __name__ == '__main__':
     from multiprocessing import Process
 
-    devices = [0, 1, 2, 3] * 3
+    paras = [
+        ('dropN', 20, 256, 0),
+        ('dropN', 50, 128, 1),
+        ('dropN', 100, 256, 2),
+        ('random', 20, 256, 3),
+        ('random', 50, 128, 1),
+        ('random', 100, 256, 4),
+    ]
 
-    idx = 0
-    for aug in ('random', 'dropN'):
-        for epochs in (20, 50, 100):
-            for batch_size in (128, 256):
-                Process(
-                    target=train_with_para,
-                    args=(aug, epochs, batch_size, devices[idx]),
-                ).start()
-                idx += 1
+    for para in paras:
+        Process(
+            target=train_with_para,
+            args=para,
+        ).start()
