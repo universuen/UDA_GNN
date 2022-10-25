@@ -2,7 +2,8 @@ from torch_geometric.loader import DataLoader
 
 import src
 from src import config, types
-
+from src.original.mae.splitters import scaffold_split
+import pandas as pd
 
 def get_configured_logger(name: str) -> types.Logger:
     if config.config_name is None:
@@ -142,11 +143,23 @@ def get_configured_mae_loader(dataset: src.dataset.MoleculeDataset) -> src.loade
     )
 
 
-def get_configured_molecule_dataset(dataset: src) -> src.dataset.MoleculeDataset:
-    return src.dataset.MoleculeDataset(
-        root=str(config.Paths.datasets / dataset),
-        dataset=dataset,
-    )
+def get_scaffold_split(dataset, dataset_path):
+    smiles_list = pd.read_csv(
+        dataset_path / 'processed/smiles.csv', header=None)[0].tolist()
+    train_dataset, valid_dataset, test_dataset = scaffold_split(
+        dataset, smiles_list, null_value=0, frac_train=0.8, frac_valid=0.1, frac_test=0.1)
+    return train_dataset, valid_dataset, test_dataset
+
+
+def get_configured_mae_pretraining_dataset(dataset: src) -> src.dataset.MoleculeDataset:
+    mol_dataset = src.dataset.MoleculeDataset(
+            root=str(config.Paths.datasets / dataset),
+            dataset=dataset,
+        )
+    if dataset == 'zinc_standard_agent':
+        return mol_dataset
+    train_dataset, valid_dataset, test_dataset = get_scaffold_split(mol_dataset, config.Paths.datasets / dataset)
+    return train_dataset
 
 
 def get_configured_encoder() -> src.model.gnn.mae.Encoder:

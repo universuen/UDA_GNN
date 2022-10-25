@@ -71,6 +71,7 @@ class Pretraining(_Config):
     use_graph_trans: bool = False
     use_dual_dataset: bool = False
     dual_ds_version: int = 1
+    save_epoch: int = 20
 
 
 class Tuning(_Config):
@@ -167,7 +168,7 @@ class MAELoader(_Config):
 
 
 class TuningLoader(_Config):
-    num_workers: int = 4
+    num_workers: int = 2
     pin_memory: bool = True
 
 

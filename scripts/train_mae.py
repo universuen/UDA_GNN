@@ -8,7 +8,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'test_uda_mae'
+CONFIG_NAME: str = 'graphmae_m35_e80'
 DEVICE: int = 0
 FROM_SCRATCH: bool = True
 
@@ -24,31 +24,20 @@ if __name__ == '__main__':
     """
     Pretraining 1
     """
-    config.Pretraining.epochs = 1
-    config.Pretraining.save_epoch = 1
+    config.Pretraining.epochs = 100
+    config.Pretraining.save_epoch = 20
     encoder = api.get_configured_encoder()
     decoder = api.get_configured_decoder()
-    if FROM_SCRATCH:
-        api.train_mae(encoder, decoder)
-    else:
-        cache_path = '/storage_fast/zyliu/code/UDA_GNN/data/models/test_uda_mae/mae_zinc_standard_agent_e1_s0.pt'
-        mae_state_dict = torch.load(cache_path, map_location=torch.device('cpu'))
-        encoder.load_state_dict(mae_state_dict['encoder'])
-        decoder.load_state_dict(mae_state_dict['decoder'])
-
+    api.train_mae(encoder, decoder)
+    
     ## load the 80th epoch checkpoint
-    cache_path = '/storage_fast/zyliu/code/UDA_GNN/data/models/uda_mae/mae_zinc_standard_agent_e80_s0.pt'
+    cache_path = '/storage_fast/zyliu/code/UDA_GNN/data/models/graphmae_m35_e80/mae_zinc_standard_agent_e80_s0.pt'
     mae_state_dict = torch.load(cache_path, map_location=torch.device('cpu'))
     encoder.load_state_dict(mae_state_dict['encoder'])
     decoder.load_state_dict(mae_state_dict['decoder'])
 
     original_e_states = deepcopy(encoder.state_dict())
-    original_d_states = deepcopy(decoder.state_dict())
     
-    # set pretrain phase2 config
-    config.Pretraining.epochs = 50
-    config.TuningLoader.num_workers = 2
-    config.Tuning.batch_size = 32
     
     encoder = api.get_configured_encoder()
     for seed in config.loop_seeds:
@@ -56,13 +45,6 @@ if __name__ == '__main__':
         api.set_seed(config.seed)
         for ds in config.datasets:
             encoder.load_state_dict(original_e_states)
-            decoder.load_state_dict(original_d_states)
-            """
-            Pretraining 2
-            """
-            config.PretrainingDataset.dataset = ds
-            config.Pretraining.save_epoch = config.Pretraining.epochs
-            api.train_mae(encoder, decoder)
             """
             Tuning
             """

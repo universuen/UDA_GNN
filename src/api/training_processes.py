@@ -350,7 +350,7 @@ def train_mae(
 
     logger.debug('set data loader')
     loader = api.get_configured_mae_loader(
-        api.get_configured_molecule_dataset(
+        api.get_configured_mae_pretraining_dataset(
             config.PretrainingDataset.dataset
         )
     )
@@ -359,6 +359,8 @@ def train_mae(
     loss_history = api.get_configured_history('pretraining_losses')
 
     logger.debug('training loop')
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
     for e in range(config.Pretraining.epochs):
         for idx, batch in enumerate(loader):
             batch.to(config.device)
@@ -375,12 +377,14 @@ def train_mae(
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(loader)}')
         logger.info(training_bar(e, config.Pretraining.epochs, loss=loss_history.last_one))
-
-    logger.debug('save encoder')
-    models_dir = config.Paths.models / config.config_name
-    models_dir.mkdir(exist_ok=True)
-    torch.save(
-        encoder.state_dict(),
-        models_dir / f'encoder_{config.PretrainingDataset.dataset}_{config.seed}.pt'
-    )
+        
+        if (e + 1) % config.Pretraining.save_epoch == 0:
+            logger.debug(f'saving mae encoder and decoder at the {e+1} epoch')
+            torch.save(
+                {
+                    'encoder': encoder.state_dict(), 
+                    'decoder': decoder.state_dict(), 
+                },
+                models_dir / f'mae_{config.PretrainingDataset.dataset}_e{e+1}_s{config.seed}.pt'
+            )
     loss_history.save()

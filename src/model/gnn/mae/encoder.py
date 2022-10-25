@@ -19,3 +19,8 @@ class Encoder(GNN, GNNModel):
         # remove self loop adding process
         for conv in self.gnns:
             conv.add_selfloop = False
+
+    def enable_selfloop(self):
+        # remove self loop adding process
+        for conv in self.gnns:
+            conv.add_selfloop = True
