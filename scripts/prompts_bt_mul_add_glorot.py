@@ -9,7 +9,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'prompts_mul'
+CONFIG_NAME: str = 'prompts_mul_add_glorot'
 DEVICE: int = 0
 
 if __name__ == '__main__':
@@ -20,7 +20,7 @@ if __name__ == '__main__':
     config.Tuning.use_lr_scheduler = False
     config.Tuning.use_node_prompt = True
     config.Tuning.use_edge_prompt = False
-    config.Prompt.mode = 'mul'
+    config.Prompt.mode = 'mul_add'
     if DEBUG:
         api.set_debug_mode()
 

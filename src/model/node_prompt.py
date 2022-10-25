@@ -14,16 +14,25 @@ class NodePrompt(nn.Module):
         self.b = torch.nn.Parameter(
             torch.randn(1, size)
         )
-        glorot(self.value)
-        self.memory = None
+        self.init_weights()
+        self.memory = {
+            'value': self.value.clone(),
+            'b': self.b.clone(),
+        }
         self.remember()
         self.mode = mode
 
+    def init_weights(self):
+        glorot(self.value)
+        glorot(self.b)
+
     def remember(self):
-        self.memory = self.value.clone()
+        self.memory['value'] = self.value.clone()
+        self.memory['b'] = self.b.clone()
 
     def reset(self):
-        self.value = self.memory.clone()
+        self.value = self.memory['value'].clone()
+        self.b = self.memory['b'].clone()
 
     def forward(self, x: torch.Tensor):
         # the operation can be modified later

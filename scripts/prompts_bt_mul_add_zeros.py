@@ -1,20 +1,31 @@
 import context
 
-from multiprocessing import Process
 from copy import deepcopy
 
 import torch
+from torch_geometric.nn.inits import glorot
 
 from src import config
 from src import api
+import src
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'prompts_mul_add'
-DEVICE: int = 1
+CONFIG_NAME: str = 'prompts_mul_add_zeros'
+DEVICE: int = 0
+
+
+# set init method
+def _init_weights(self: src.model.NodePrompt):
+    glorot(self.value)
+    self.b = torch.nn.Parameter(
+        torch.zeros_like(self.b)
+    )
+
 
 if __name__ == '__main__':
+    src.model.NodePrompt.init_weights = _init_weights
     # set config
-    config.config_name = f'{CONFIG_NAME}_without_edge'
+    config.config_name = f'{CONFIG_NAME}'
     config.GNN.drop_ratio = 0.5
     config.device = f'cuda:{DEVICE}'
     config.Tuning.use_lr_scheduler = False
