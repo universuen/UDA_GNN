@@ -13,12 +13,13 @@ DEBUG: bool = False
 ROOT_NAME = 'uda_para_search'
 
 
-def search_aug(aug: int, device: int):
+def search_aug(aug: int, epochs: int, device: int):
     # set config
-    config.config_name = f'{ROOT_NAME}_{aug}'
+    config.config_name = f'{ROOT_NAME}_noleakage_{aug}_e{epochs}'
     config.Pretraining.batch_size = 256
     config.device = f'cuda:{device}'
-    config.Pretraining.epochs = 50
+    config.Pretraining.epochs = epochs
+    config.Pretraining.save_epoch = 1000
     config.PretrainingDataset.aug_1 = aug
     config.PretrainingDataset.aug_2 = aug
     if DEBUG:
@@ -55,12 +56,18 @@ def search_aug(aug: int, device: int):
 
 if __name__ == '__main__':
     #  dropN, random, maskN
-    args = [
-        ('dropN', 0),
-        ('maskN', 1),
-    ]
-    for i in args:
+    # args = [
+    #     ('dropN', 50, 1),
+    #     ('random', 50, 2),
+    # ]
+    i = 1
+    for e in [10, 20, 50, 100]:
         Process(
             target=search_aug,
-            args=i,
+            args=('dropN', e, i),
         ).start()
+        Process(
+            target=search_aug,
+            args=('random', e, i),
+        ).start()
+        i += 1

@@ -43,7 +43,7 @@ def pretrain(model: src.types.PretrainingModel):
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(loader)}')
         logger.info(training_bar(e, config.Pretraining.epochs, loss=loss_history.last_one))
-        if (e + 1) % 20 == 0:
+        if (e + 1) % config.Pretraining.save_epoch == 0:
             models_dir = config.Paths.models / config.config_name
             models_dir.mkdir(exist_ok=True)
             torch.save(

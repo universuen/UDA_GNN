@@ -18,7 +18,7 @@ def get_configured_logger(name: str) -> types.Logger:
 
 def get_configured_pretraining_dataset() -> types.Dataset:
     dataset = config.PretrainingDataset.dataset
-    return src.dataset.MoleculeAugDataset(
+    mol_dataset = src.dataset.MoleculeAugDataset(
         root=str(config.Paths.datasets / dataset),
         dataset=dataset,
         aug_1=config.PretrainingDataset.aug_1,
@@ -28,6 +28,10 @@ def get_configured_pretraining_dataset() -> types.Dataset:
         use_original=config.PretrainingDataset.use_original,
     )
 
+    if dataset == 'zinc_standard_agent':
+        return mol_dataset
+    train_dataset, valid_dataset, test_dataset = get_scaffold_split(mol_dataset, config.Paths.datasets / dataset)
+    return train_dataset
 
 def get_configured_dual_dataset():
     dataset = config.PretrainingDataset.dataset
