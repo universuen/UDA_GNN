@@ -1,7 +1,7 @@
 import random
 from time import sleep
 
-from src.api.utils import training_bar
+from src.api.training_processes import training_bar
 
 for e in range(100):
     sleep(0.3)

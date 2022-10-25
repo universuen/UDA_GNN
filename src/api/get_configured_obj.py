@@ -130,3 +130,42 @@ def get_configured_graph_trans() -> types.GNNModel:
         d_model=config.GraphTrans.d_model,
         transformer_dropout=config.GraphTrans.trans_drop_ratio,
     )
+
+
+def get_configured_mae_loader(dataset: src.dataset.MoleculeDataset) -> src.loader.MAELoader:
+    return src.loader.MAELoader(
+        dataset=dataset,
+        batch_size=config.Pretraining.batch_size,
+        shuffle=config.PretrainingLoader.shuffle,
+        num_workers=config.PretrainingLoader.num_workers,
+        mask_rate=config.MAELoader.mask_rate,
+    )
+
+
+def get_configured_molecule_dataset(dataset: src) -> src.dataset.MoleculeDataset:
+    return src.dataset.MoleculeDataset(
+        root=str(config.Paths.datasets / dataset),
+        dataset=dataset,
+    )
+
+
+def get_configured_encoder() -> src.model.gnn.mae.Encoder:
+    return src.model.gnn.mae.Encoder(
+        num_layer=config.Encoder.num_layer,
+        emb_dim=config.Encoder.emb_dim,
+        jk=config.Encoder.jk,
+        drop_ratio=config.Encoder.drop_ratio,
+    )
+
+
+def get_configured_decoder() -> src.model.gnn.mae.Decoder:
+    return src.model.gnn.mae.Decoder(
+        hidden_dim=config.Decoder.hidden_dim,
+        out_dim=config.Decoder.out_dim,
+    )
+
+
+def get_configured_node_prompt() -> src.model.NodePrompt:
+    return src.model.NodePrompt(
+        mode=config.Prompt.mode,
+    ).to(config.device)

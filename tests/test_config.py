@@ -1,6 +1,5 @@
 from src import config
 
 if __name__ == '__main__':
-    config.Paths.print_content()
-    config.Logger.print_content()
-
+    c = config.Encoder.to_dict()
+    pass
