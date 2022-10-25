@@ -80,7 +80,7 @@ if __name__ == '__main__':
         ('dropN', 100, 256, 2),
         ('random', 20, 256, 3),
         ('random', 50, 128, 1),
-
+        ('random', 100, 256, 0),
     ]
 
     for para in paras:
@@ -88,4 +88,3 @@ if __name__ == '__main__':
             target=train_with_para,
             args=para,
         ).start()
-    train_with_para('random', 100, 256, 4)
