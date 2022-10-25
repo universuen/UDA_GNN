@@ -330,7 +330,7 @@ def ttt_eval(clf_model, loader):
     y_scores = []
     y_aug_scores = []
     for data, augmentations in loader:
-        if config.TestTimeTuning.aug == 'dropout':
+        if config.TestTimeTuning.aug == 'dropout' or config.TestTimeTuning.aug == 'featM':
             clf_model.train()
             freeze_bn(clf_model)
 

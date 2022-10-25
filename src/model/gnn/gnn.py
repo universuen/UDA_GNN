@@ -37,9 +37,8 @@ class GNN(_GNN, GNNModel):
         if self.mask_ratio > 0 and self.training:
             '''generate random mask'''
             N = x.shape[0]
-            mask = x.new_empty((N, 1), dtype=torch.bool).uniform_() > self.mask_ratio
-            x = x * mask
-            print(x[:10, 0])
+            mask = x.new_empty((N, 1), dtype=torch.float).uniform_() > self.mask_ratio
+            x = x * mask.detach()
 
         h_list = [x]
         for layer in range(self.num_layer):
