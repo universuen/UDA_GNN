@@ -130,8 +130,8 @@ def eval_chem(model, loader) -> float:
     return mean_roc
 
 
-def safe_mean(list_: list[src.types.Numeric]) -> src.types.Numeric:
-    return 0 if len(list_) == 0 else round(sum(list_) / len(list_), 1)
+def safe_mean(list_: list[src.types.Numeric], round_: int = 1) -> src.types.Numeric:
+    return 0 if len(list_) == 0 else round(sum(list_) / len(list_), round_)
 
 
 def analyze_results(steps: list[int] = None):
@@ -197,12 +197,20 @@ def analyze_results_by_ratio(ratios: list[int] = None):
                     results[ds][ratio].append(history[int(len(history.values) * ratio) - 1] * 100)
                 except (FileNotFoundError, IndexError):
                     pass
-            results[ds][ratio] = safe_mean(results[ds][ratio])
-            results['mean'][ratio].append(results[ds][ratio])
+            mean = safe_mean(results[ds][ratio])
+            std = round(float(np.std(results[ds][ratio])), 1)
+            results[ds][ratio] = f'{mean}±{std}'
+            results['mean'][ratio].append((mean, std))
 
     for ratio in ratios:
-        results['mean'][ratio] = safe_mean(results['mean'][ratio])
+        means = []
+        stds = []
+        for i, j in results['mean'][ratio]:
+            means.append(i)
+            stds.append(j)
+        results['mean'][ratio] = f"{safe_mean(means)}±{safe_mean(stds)}"
 
+    pd.options.display.max_columns = None
     results = pd.DataFrame.from_dict(results)
     print(results)
     results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
@@ -387,7 +395,7 @@ def ttt_prompt_eval(clf_model, loader):
             print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
         mean_roc = sum(roc_list) / len(roc_list)
         return mean_roc
-    
+
     clf_model.eval()
     parameters = list(clf_model.gnn.node_prompts.parameters())
     if config.TestTimeTuning.include_linear:
@@ -396,7 +404,7 @@ def ttt_prompt_eval(clf_model, loader):
         params=parameters,
         lr=config.Tuning.lr,
     )
-    
+
     # back up
     clf_model.remember_prompt()
     optim_states = copy.deepcopy(optimizer.state_dict())
@@ -411,7 +419,7 @@ def ttt_prompt_eval(clf_model, loader):
 
         data.to(config.device)
         augmentations.to(config.device)
-        
+
         # adapt
         aug_pre_list = []
         for _ in range(config.TestTimeTuning.num_iterations):
@@ -432,7 +440,7 @@ def ttt_prompt_eval(clf_model, loader):
         y_true.append(data.y.view(pred.shape))
         y_scores.append(pred)
         y_aug_scores.append(aug_pre)
-        
+
         # reset
         clf_model.reset_prompt()
         optimizer.load_state_dict(optim_states)
