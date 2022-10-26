@@ -71,6 +71,7 @@ class Pretraining(_Config):
     use_graph_trans: bool = False
     use_dual_dataset: bool = False
     dual_ds_version: int = 1
+    save_epoch: int = 20
 
 
 class Tuning(_Config):
@@ -82,7 +83,7 @@ class Tuning(_Config):
     use_edge_prompt: bool = False
 
 
-class TestTimeTuning:
+class TestTimeTuning(_Config):
     num_augmentations: int = 32
     num_iterations: int = 1
     aug: str = 'random'
@@ -104,6 +105,7 @@ class TestTimeTuning:
         'random_v2',
         'dropout',
         'dropE',
+        'featM'
         'none',
     )
     assert 0 <= aug_ratio <= 1
@@ -154,7 +156,7 @@ def _worker_seed_init(idx: int, seed_: int):
     np.random.seed(seed_)
 
 
-class PretrainingLoader(_Config):
+class PretrainingLoader(Pretraining):
     num_workers: int = 4
     pin_memory: bool = True
     drop_last: bool = True
@@ -162,8 +164,12 @@ class PretrainingLoader(_Config):
     worker_init_fn: Callable = lambda x: _worker_seed_init(x, seed)
 
 
+class MAELoader(_Config):
+    mask_rate: float = 0.35
+
+
 class TuningLoader(_Config):
-    num_workers: int = 4
+    num_workers: int = 2
     pin_memory: bool = True
 
 
@@ -190,6 +196,22 @@ class GNN(_Config):
     assert 0 <= drop_ratio <= 1
 
 
+class Encoder(_Config):
+    num_layer: int = 5
+    emb_dim: int = 300
+    jk: str = "last"
+    drop_ratio: int | float = 0
+
+    # validity check
+    assert jk in ("concat", "last", "max", "sum")
+    assert 0 <= drop_ratio <= 1
+
+
+class Decoder(_Config):
+    hidden_dim: int = 300
+    out_dim: int = 119
+
+
 class GraphTrans(_Config):
     gnn_drop_ratio: float = 0
     d_model: int = 128
@@ -199,6 +221,15 @@ class GraphTrans(_Config):
 class BarlowTwins(_Config):
     lambda_: float = 0.0051
     sizes: tuple[int] = (300, 1200, 1200, 1200)
+
+
+class Prompt(_Config):
+    mode: str = 'add'
+    assert mode in (
+        'add',
+        'mul',
+        'mul_add',
+    )
 
 
 class Logger(_Config):

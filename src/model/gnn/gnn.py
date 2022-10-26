@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as functional
-
+import random
 from src.original.trans_bt.gnn_model import GNN as _GNN
 from src.model.gnn import GNNModel
 
@@ -21,6 +21,7 @@ class GNN(_GNN, GNNModel):
         )
         self.node_prompts = None
         self.edge_prompt = None
+        self.mask_ratio = 0
 
     def forward(self, *argv):
         if len(argv) == 3:
@@ -32,6 +33,12 @@ class GNN(_GNN, GNNModel):
             raise ValueError("unmatched number of arguments.")
 
         x = self.x_embedding1(x[:, 0]) + self.x_embedding2(x[:, 1])
+
+        if self.mask_ratio > 0 and self.training:
+            '''generate random mask'''
+            N = x.shape[0]
+            mask = x.new_empty((N, 1), dtype=torch.float).uniform_() > self.mask_ratio
+            x = x * mask.detach()
 
         h_list = [x]
         for layer in range(self.num_layer):

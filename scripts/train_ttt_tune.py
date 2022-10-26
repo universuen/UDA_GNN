@@ -13,7 +13,7 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
     # set config
     config.config_name = f'ttt_{num_aug}{aug}{aug_ratio}_c{conf_ratio}'
     config.device = f'cuda:{device}'
-    config.GNN.drop_ratio = 0.5
+    config.GNN.drop_ratio = 0
     config.TestTimeTuning.aug = aug
     config.TestTimeTuning.aug_ratio = aug_ratio
     config.TestTimeTuning.num_augmentations = num_aug
@@ -32,10 +32,16 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
         for ds in config.datasets:
             config.TuningDataset.dataset = ds
             if config.TestTimeTuning.aug == 'dropout':
+                ## setup dropout augmentation
                 config.GNN.drop_ratio = config.TestTimeTuning.aug_ratio
-            config.Tuning.use_lr_scheduler = ds == 'bace' 
+
             config.Tuning.lr = 1e-4 if ds == 'muv' else 1e-3
             gnn = api.get_configured_gnn()
+            
+            if config.TestTimeTuning.aug == 'featM':
+                ## setup feature masking augmentation
+                gnn.mask_ratio = config.TestTimeTuning.aug_ratio
+
             api.test_time_tuning_presaved_models(gnn)
     api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
 
