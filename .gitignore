@@ -17,3 +17,7 @@ tests/playground.py
 *.xlsx
 
 run.sh
+
+.d[0-9]*
+*.e[0-9]*
+*.o[0-9]*

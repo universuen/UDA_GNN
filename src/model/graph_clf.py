@@ -1,6 +1,6 @@
 from torch import nn
 from torch_geometric.nn.glob import global_mean_pool
-
+import copy
 from src.model.gnn._gnn_model import GNNModel
 
 
@@ -33,3 +33,11 @@ class GraphClf(nn.Module):
         node_representation = self.gnn(data)
         graph_rep = node_representation if self.use_graph_trans else self.pool(node_representation, data.batch)
         return self.linear(graph_rep)
+
+    def remember_prompt(self):
+        self.prompt_state = copy.deepcopy(self.gnn.node_prompts.state_dict())
+        self.linear_state = copy.deepcopy(self.linear.state_dict())
+
+    def reset_prompt(self):
+        self.gnn.node_prompts.load_state_dict(self.prompt_state)
+        self.linear.load_state_dict(self.linear_state)

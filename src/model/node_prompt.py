@@ -16,10 +16,10 @@ class NodePrompt(nn.Module):
         self.remember()
 
     def remember(self):
-        self.memory = self.value.clone()
+        self.memory = self.value.data.detach().clone()
 
     def reset(self):
-        self.value = self.memory.clone()
+        self.value.data.copy_(self.memory)
 
     def forward(self, x: torch.Tensor):
         # the operation can be modified later

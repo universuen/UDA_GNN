@@ -92,6 +92,7 @@ class TestTimeTuning:
     conf_ratio: float = 1.0
     presaved_model_path: Path = None
     add_prompts: bool = False
+    include_linear: bool = False
 
 
     assert aug in (
