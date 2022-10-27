@@ -3,6 +3,8 @@ import context
 import torch
 
 from multiprocessing import Process
+
+import src.model
 from src import config
 from src import api
 
@@ -22,9 +24,9 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
     config.OneSampleBN.is_enabled = True
     if DEBUG:
         api.set_debug_mode()
-    # enable OSBN
     if config.OneSampleBN.is_enabled:
         api.replace_bn()
+
     """
     Load saved models and conduct test time tuning
     """
@@ -40,7 +42,6 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
 
             config.Tuning.lr = 1e-4 if ds == 'muv' else 1e-3
             gnn = api.get_configured_gnn()
-
             if config.TestTimeTuning.aug == 'featM':
                 ## setup feature masking augmentation
                 gnn.mask_ratio = config.TestTimeTuning.aug_ratio
@@ -50,6 +51,7 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
 
 
 if __name__ == '__main__':
-    Process(target=search_ttt_para, args=('dropout', 0.3, 1.0, 32, 0)).start()
-    Process(target=search_ttt_para, args=('dropout', 0.4, 1.0, 32, 1)).start()
-    Process(target=search_ttt_para, args=('dropout', 0.5, 1.0, 32, 1)).start()
+    search_ttt_para('dropout', 0.3, 1.0, 32, 0)
+    # Process(target=search_ttt_para, args=('dropout', 0.3, 1.0, 32, 0)).start()
+    # Process(target=search_ttt_para, args=('dropout', 0.4, 1.0, 32, 1)).start()
+    # Process(target=search_ttt_para, args=('dropout', 0.5, 1.0, 32, 1)).start()

@@ -20,7 +20,7 @@ def replace_bn():
     nn.BatchNorm1d = src.model.OneSampleBN
 
 
-def set_bn_prior(value: int = config.OneSampleBN.strength):
+def set_bn_prior(value: float):
     src.model.OneSampleBN.prior = value
 
 
@@ -314,7 +314,7 @@ def freeze_bn(model):
 
 
 def ttt_eval(clf_model, loader):
-    set_bn_prior()
+    set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
 
     def _evaluate(y_true, y_scores):
         roc_list = []
@@ -388,8 +388,7 @@ def ttt_eval(clf_model, loader):
 
 
 def ttt_prompt_eval(clf_model, loader):
-    set_bn_prior()
-
+    set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
     def _evaluate(y_true, y_scores):
         roc_list = []
         for i in range(y_true.shape[1]):
