@@ -51,7 +51,6 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
 
 
 if __name__ == '__main__':
-    search_ttt_para('dropout', 0.3, 1.0, 32, 0)
-    # Process(target=search_ttt_para, args=('dropout', 0.3, 1.0, 32, 0)).start()
-    # Process(target=search_ttt_para, args=('dropout', 0.4, 1.0, 32, 1)).start()
-    # Process(target=search_ttt_para, args=('dropout', 0.5, 1.0, 32, 1)).start()
+    Process(target=search_ttt_para, args=('dropout', 0.3, 1.0, 32, 0)).start()
+    Process(target=search_ttt_para, args=('dropout', 0.4, 1.0, 32, 1)).start()
+    Process(target=search_ttt_para, args=('dropout', 0.5, 1.0, 32, 1)).start()
