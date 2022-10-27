@@ -721,4 +721,4 @@ def replace_bn():
 
 
 def set_bn_prior(value: int = config.OneSampleBN.strength):
-    src.model.OneSampleBN = value
+    src.model.OneSampleBN.prior = value
