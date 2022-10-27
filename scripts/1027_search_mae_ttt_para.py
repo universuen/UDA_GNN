@@ -13,7 +13,7 @@ DEBUG: bool = False
 
 def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
     # set config
-    config.config_name = f'ttt_osbn_{num_aug}{aug}{aug_ratio}_c{conf_ratio}'
+    config.config_name = f'1028_ttt_osbn_{num_aug}{aug}{aug_ratio}_c{conf_ratio}'
     config.device = f'cuda:{device}'
     config.GNN.drop_ratio = 0
     config.TestTimeTuning.aug = aug
