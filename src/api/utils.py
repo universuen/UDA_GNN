@@ -695,7 +695,7 @@ def test_time_tuning_presaved_models(gnn):
     logger.debug('Start loading models and evaluation.')
     for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
         model_path = Path(
-            config.TestTimeTuning.presaved_model_path / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
+            config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
         if not model_path.exists():
             logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
             input()
