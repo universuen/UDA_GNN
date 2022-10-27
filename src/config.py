@@ -95,7 +95,6 @@ class TestTimeTuning(_Config):
     add_prompts: bool = False
     include_linear: bool = False
 
-
     assert aug in (
         'dropN',
         'permE',
@@ -234,6 +233,11 @@ class Prompt(_Config):
 
 class Logger(_Config):
     level: int | str = logging.INFO
+
+
+class OneSampleBN(_Config):
+    is_enabled: bool = False
+    strength: int = 16
 
 
 _all_items = vars().values()

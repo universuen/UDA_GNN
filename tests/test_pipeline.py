@@ -3,12 +3,16 @@ from src import config
 from src import api
 
 if __name__ == '__main__':
+    if config.OneSampleBN.is_enabled:
+        api.replace_bn()
+
+    # when set to strength
+    api.set_bn_prior()
+    # when set to 1
+    api.set_bn_prior(1)
     """
     Pretraining
     """
-    from torch import nn
-    nn.BatchNorm1d = src.model.OneSampleBN
-    nn.BatchNorm1d.reset_prior()
     api.set_debug_mode()
     gnn_model = api.get_configured_gnn()
     bt_model = api.get_configured_barlow_twins(gnn_model)

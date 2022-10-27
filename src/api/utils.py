@@ -718,3 +718,7 @@ def get_current_filename(file) -> str:
 
 def replace_bn():
     nn.BatchNorm1d = src.model.OneSampleBN
+
+
+def set_bn_prior(value: int = config.OneSampleBN.strength):
+    src.model.OneSampleBN = value
