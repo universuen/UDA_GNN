@@ -315,6 +315,7 @@ def freeze_bn(model):
 
 def ttt_eval(clf_model, loader):
     set_bn_prior()
+
     def _evaluate(y_true, y_scores):
         roc_list = []
         for i in range(y_true.shape[1]):
@@ -388,6 +389,7 @@ def ttt_eval(clf_model, loader):
 
 def ttt_prompt_eval(clf_model, loader):
     set_bn_prior()
+
     def _evaluate(y_true, y_scores):
         roc_list = []
         for i in range(y_true.shape[1]):
@@ -693,7 +695,7 @@ def test_time_tuning_presaved_models(gnn):
     logger.debug('Start loading models and evaluation.')
     for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
         model_path = Path(
-            config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
+            config.TestTimeTuning.presaved_model_path / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
         if not model_path.exists():
             logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
             input()
