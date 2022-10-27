@@ -16,6 +16,14 @@ from src import config, api
 from pathlib import Path
 
 
+def replace_bn():
+    nn.BatchNorm1d = src.model.OneSampleBN
+
+
+def set_bn_prior(value: int = config.OneSampleBN.strength):
+    src.model.OneSampleBN.prior = value
+
+
 def log_config_info(logger, config_cls: config.ConfigType, end: bool = True):
     logger.info(f'{config_cls.__name__:*^100}')
     for k, v in config_cls.to_dict().items():
@@ -306,6 +314,7 @@ def freeze_bn(model):
 
 
 def ttt_eval(clf_model, loader):
+    set_bn_prior()
     def _evaluate(y_true, y_scores):
         roc_list = []
         for i in range(y_true.shape[1]):
@@ -373,10 +382,12 @@ def ttt_eval(clf_model, loader):
 
     mean_roc = _evaluate(y_true, y_scores)
     mean_aug_roc = _evaluate(y_true, y_aug_scores)
+    set_bn_prior(1)
     return mean_roc, mean_aug_roc
 
 
 def ttt_prompt_eval(clf_model, loader):
+    set_bn_prior()
     def _evaluate(y_true, y_scores):
         roc_list = []
         for i in range(y_true.shape[1]):
@@ -447,6 +458,7 @@ def ttt_prompt_eval(clf_model, loader):
 
     mean_roc = _evaluate(y_true, y_scores)
     mean_aug_roc = _evaluate(y_true, y_aug_scores)
+    set_bn_prior(1)
     return mean_roc, mean_aug_roc
 
 
@@ -714,11 +726,3 @@ def test_time_tuning_presaved_models(gnn):
 
 def get_current_filename(file) -> str:
     return Path(file).name.split('.')[0]
-
-
-def replace_bn():
-    nn.BatchNorm1d = src.model.OneSampleBN
-
-
-def set_bn_prior(value: int = config.OneSampleBN.strength):
-    src.model.OneSampleBN.prior = value
