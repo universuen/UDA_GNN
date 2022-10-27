@@ -18,7 +18,7 @@ def search_ttt_para(aug, aug_ratio, conf_ratio, num_aug, device):
     config.TestTimeTuning.aug_ratio = aug_ratio
     config.TestTimeTuning.num_augmentations = num_aug
     config.TestTimeTuning.conf_ratio = conf_ratio
-    config.TestTimeTuning.presaved_model_path = config.Paths.models / 'pretrained_encoder.pt'
+    config.TestTimeTuning.presaved_model_path = './data/models/graphmae80_models_v2'
     config.OneSampleBN.is_enabled = True
     if DEBUG:
         api.set_debug_mode()
