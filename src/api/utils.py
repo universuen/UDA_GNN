@@ -712,5 +712,5 @@ def test_time_tuning_presaved_models(gnn):
         )
 
 
-def get_current_filename() -> str:
-    return Path(__file__).name.split('.')[0]
+def get_current_filename(file) -> str:
+    return Path(file).name.split('.')[0]

@@ -8,7 +8,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = api.get_current_filename()
+CONFIG_NAME: str = api.get_current_filename(__file__)
 DEVICE: int = 0
 
 if __name__ == '__main__':
