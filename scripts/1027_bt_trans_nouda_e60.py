@@ -8,7 +8,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'fixed_uda_trans_e50_dropN'
+CONFIG_NAME: str = api.get_current_filename()
 DEVICE: int = 0
 
 if __name__ == '__main__':
@@ -20,6 +20,8 @@ if __name__ == '__main__':
     config.device = f'cuda:{DEVICE}'
     config.BarlowTwins.sizes = (128, 1200, 1200, 1200)
     config.Tuning.use_lr_scheduler = True
+    config.Pretraining.epochs = 256
+    config.Pretraining.epochs = 60
     if DEBUG:
         api.set_debug_mode()
 
@@ -46,20 +48,20 @@ if __name__ == '__main__':
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
-            """
-            Pretraining 2
-            """
-            config.PretrainingDataset.dataset = ds
-            config.Pretraining.batch_size = 256
-            config.GraphTrans.gnn_drop_ratio = 0
-            config.Pretraining.epochs = 50
-            config.PretrainingDataset.aug_1 = 'dropN'
-            config.PretrainingDataset.aug_2 = 'dropN'
-            bt_model = api.get_configured_barlow_twins(
-                api.get_configured_graph_trans()
-            )
-            bt_model.load_state_dict(original_bt_states)
-            api.pretrain(bt_model)
+            # """
+            # Pretraining 2
+            # """
+            # config.PretrainingDataset.dataset = ds
+            # config.Pretraining.batch_size = 256
+            # config.GraphTrans.gnn_drop_ratio = 0
+            # config.Pretraining.epochs = 50
+            # config.PretrainingDataset.aug_1 = 'dropN'
+            # config.PretrainingDataset.aug_2 = 'dropN'
+            # bt_model = api.get_configured_barlow_twins(
+            #     api.get_configured_graph_trans()
+            # )
+            # bt_model.load_state_dict(original_bt_states)
+            # api.pretrain(bt_model)
             """
             Tuning
             """
@@ -74,5 +76,5 @@ if __name__ == '__main__':
             trans_model.load_state_dict(
                 bt_model.gnn.state_dict()
             )
-            api.tune(trans_model)
+            api.tune_and_save_models(trans_model)
     api.analyze_results_by_ratio()

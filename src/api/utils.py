@@ -203,12 +203,8 @@ def analyze_results_by_ratio(ratios: list[int] = None):
             results['mean'][ratio].append((mean, std))
 
     for ratio in ratios:
-        means = []
-        stds = []
-        for i, j in results['mean'][ratio]:
-            means.append(i)
-            stds.append(j)
-        results['mean'][ratio] = f"{safe_mean(means)}±{safe_mean(stds)}"
+        means = [i for i, _ in results['mean'][ratio]]
+        results['mean'][ratio] = f"{safe_mean(means)}"
 
     pd.options.display.max_columns = None
     results = pd.DataFrame.from_dict(results)
@@ -714,3 +710,7 @@ def test_time_tuning_presaved_models(gnn):
                 aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
             )
         )
+
+
+def get_current_filename() -> str:
+    return Path(__file__).name.split('.')[0]
