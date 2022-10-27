@@ -714,3 +714,7 @@ def test_time_tuning_presaved_models(gnn):
 
 def get_current_filename(file) -> str:
     return Path(file).name.split('.')[0]
+
+
+def replace_bn():
+    nn.BatchNorm1d = src.model.OneSampleBN
