@@ -91,7 +91,7 @@ class TestTimeTuning(_Config):
     eval_epoch: int = 10
     save_epoch: int = 10
     conf_ratio: float = 1.0
-    presaved_model_path: Path = None
+    presaved_model_path: Path | str = None
     add_prompts: bool = False
     include_linear: bool = False
 
@@ -188,7 +188,7 @@ class GNN(_Config):
     num_layer: int = 5
     emb_dim: int = 300
     jk: str = "last"
-    drop_ratio: int | float = 0
+    drop_ratio: float = 0
 
     # validity check
     assert jk in ("concat", "last", "max", "sum")
