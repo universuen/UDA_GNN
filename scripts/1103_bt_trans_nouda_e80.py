@@ -20,8 +20,8 @@ if __name__ == '__main__':
     config.device = f'cuda:{DEVICE}'
     config.BarlowTwins.sizes = (128, 1200, 1200, 1200)
     config.Tuning.use_lr_scheduler = False
-    config.Pretraining.epochs = 256
-    config.Pretraining.epochs = 60
+    config.Pretraining.batch_size = 256
+    config.Pretraining.epochs = 80
     if DEBUG:
         api.set_debug_mode()
 
