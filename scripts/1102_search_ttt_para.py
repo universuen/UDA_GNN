@@ -1,6 +1,7 @@
 import context
 
 from copy import deepcopy
+from multiprocessing import Process
 
 import torch
 
@@ -52,7 +53,7 @@ def tune_and_save():
     api.analyze_ttt_results_by_ratio(item_name='te_auc')
 
 
-def search_para(num_iter: int, num_aug: int):
+def search_para(num_iter: int, num_aug: int, d: int):
     config.TestTimeTuning.aug = 'dropout'
     config.TestTimeTuning.aug_ratio = 0.5
     config.TestTimeTuning.num_iterations = num_iter
@@ -79,6 +80,10 @@ def search_para(num_iter: int, num_aug: int):
 
 
 if __name__ == '__main__':
-    DEBUG = True
     tune_and_save()
-    search_para(3, 32)
+    for num_iter in (1, 2, 5):
+        for d, num_aug in enumerate((8, 16, 32)):
+            Process(
+                target=search_para,
+                args=(num_iter, num_aug, d),
+            ).start()
