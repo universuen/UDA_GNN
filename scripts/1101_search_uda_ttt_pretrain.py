@@ -68,7 +68,7 @@ def search_uda_ttt_pretrain_para(mask_rate, pretraining_epochs, device):
             config.Tuning.use_lr_scheduler = ds == 'bace'
             api.test_time_tuning(new_encoder)
 
-    api.analyze_results_by_ratio()
+    api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
 
 
 if __name__ == '__main__':
