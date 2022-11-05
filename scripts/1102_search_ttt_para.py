@@ -9,7 +9,7 @@ from src import config
 from src import api
 
 DEBUG: bool = False
-CONFIG_NAME: str = 'ttt_add_prompts'
+CONFIG_NAME: str = api.get_current_filename(__file__)
 DEVICE: int = 0
 
 
@@ -82,7 +82,7 @@ def search_para(num_iter: int, num_aug: int, d: int):
 
 
 if __name__ == '__main__':
-    # tune_and_save()
+    tune_and_save()
     for num_iter in (1, 2, 5):
         for d, num_aug in enumerate((8, 16, 32)):
             Process(

@@ -528,7 +528,7 @@ def test_time_tuning(gnn):
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
         tr_auc_history.append(eval_chem(clf, tr_loader))
-        te_auc_history.append(ttt_eval(clf, te_ttt_loader) if (e + 1) in (90, 100) else 0)
+        te_auc_history.append(eval_chem(clf, te_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
 
         tr_auc_history.save()
@@ -536,32 +536,32 @@ def test_time_tuning(gnn):
         te_auc_history.save()
 
 
-        # if (e + 1) % config.TestTimeTuning.eval_epoch == 0:
-        #     te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
-        #     te_ttt_auc_history.save()
-        #     logger.info(
-        #         training_bar(
-        #             e,
-        #             config.Tuning.epochs,
-        #             loss=loss_history.last_one,
-        #             tr_auc=tr_auc_history.last_one,
-        #             va_auc=va_auc_history.last_one,
-        #             te_auc=te_auc_history.last_one,
-        #             te_ttt_auc=te_ttt_auc_history.last_one,
-        #             ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
-        #         )
-        #     )
-        # else:
-        #     logger.info(
-        #         training_bar(
-        #             e,
-        #             config.Tuning.epochs,
-        #             loss=loss_history.last_one,
-        #             tr_auc=tr_auc_history.last_one,
-        #             va_auc=va_auc_history.last_one,
-        #             te_auc=te_auc_history.last_one,
-        #         )
-        #     )
+        if (e + 1) % config.TestTimeTuning.eval_epoch == 0:
+            te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
+            te_ttt_auc_history.save()
+            logger.info(
+                training_bar(
+                    e,
+                    config.Tuning.epochs,
+                    loss=loss_history.last_one,
+                    tr_auc=tr_auc_history.last_one,
+                    va_auc=va_auc_history.last_one,
+                    te_auc=te_auc_history.last_one,
+                    te_ttt_auc=te_ttt_auc_history.last_one,
+                    ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
+                )
+            )
+        else:
+            logger.info(
+                training_bar(
+                    e,
+                    config.Tuning.epochs,
+                    loss=loss_history.last_one,
+                    tr_auc=tr_auc_history.last_one,
+                    va_auc=va_auc_history.last_one,
+                    te_auc=te_auc_history.last_one,
+                )
+            )
 
         if config.Tuning.use_lr_scheduler:
             lr_scheduler.step()

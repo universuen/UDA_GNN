@@ -61,4 +61,3 @@ if __name__ == '__main__':
         for d, pe in enumerate((10, 20, 50, 100)):
             config.config_name = f'1101_search_uda_ttt_pretrain_mr{mr}_pe{pe}'
             analyze_results_temp()
-            
