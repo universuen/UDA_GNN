@@ -11,7 +11,7 @@ from src import api
 DEBUG: bool = False
 CONFIG_NAME: str = api.get_current_filename(__file__)
 DEVICE: int = 0
-
+print(CONFIG_NAME)
 
 def tune_and_save():
     # set config
@@ -56,11 +56,12 @@ def tune_and_save():
 def search_para(num_iter: int, num_aug: int, d: int):
     config.config_name = f'1102_ttt_ni{num_iter}_na{num_aug}'
     config.device = f'cuda:{d}'
+    config.Encoder.drop_ratio = 0.5
     config.TestTimeTuning.aug = 'dropout'
     config.TestTimeTuning.aug_ratio = 0.5
     config.TestTimeTuning.num_iterations = num_iter
     config.TestTimeTuning.num_augmentations = num_aug
-    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / config.config_name)
+    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / CONFIG_NAME)
     if DEBUG:
         api.set_debug_mode()
     for seed in config.loop_seeds:
