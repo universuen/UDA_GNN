@@ -54,6 +54,8 @@ def tune_and_save():
 
 
 def search_para(num_iter: int, num_aug: int, d: int):
+    config.config_name = f'1102_ttt_ni{num_iter}_na{num_aug}'
+    config.device = f'cuda:{d}'
     config.TestTimeTuning.aug = 'dropout'
     config.TestTimeTuning.aug_ratio = 0.5
     config.TestTimeTuning.num_iterations = num_iter
@@ -80,7 +82,7 @@ def search_para(num_iter: int, num_aug: int, d: int):
 
 
 if __name__ == '__main__':
-    tune_and_save()
+    # tune_and_save()
     for num_iter in (1, 2, 5):
         for d, num_aug in enumerate((8, 16, 32)):
             Process(
