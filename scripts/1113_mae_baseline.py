@@ -11,6 +11,10 @@ DEVICE: int = 0
 
 if __name__ == '__main__':
     # set config
+    config.Tuning.batch_size = 32
+    config.Encoder.drop_ratio = 0.5
+    config.Encoder.emb_dim = 300
+    config.Encoder.num_layer = 5
     config.config_name = CONFIG_NAME
     config.MAELoader.mask_rate = 0.35
     config.device = f'cuda:{DEVICE}'
@@ -32,13 +36,10 @@ if __name__ == '__main__':
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
-            config.Tuning.batch_size = 32
-            config.Encoder.drop_ratio = 0.5
-            config.Encoder.emb_dim = 300
-            config.Encoder.num_layer = 5
             config.Tuning.lr = 1e-3 if ds != 'muv' else 1e-4
             config.Tuning.use_lr_scheduler = True if ds == 'bace' else False
             encoder = api.get_configured_encoder()
+            encoder.enable_selfloop()
             encoder.load_state_dict(e_states)
             api.tune(encoder)
 
