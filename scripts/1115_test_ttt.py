@@ -50,6 +50,7 @@ def tune_and_save():
             config.TuningDataset.dataset = ds
             config.Tuning.use_lr_scheduler = ds == 'bace'
             config.Tuning.lr = 1e-4 if ds == 'muv' else 1e-3
+            encoder.enable_selfloop()
             api.tune_and_save_models(encoder)
     api.analyze_ttt_results_by_ratio(item_name='te_auc')
 
@@ -78,7 +79,7 @@ def search_para(num_iter: int, num_aug: int, d: int):
 
             if config.TestTimeTuning.aug == 'featM':
                 gnn.mask_ratio = config.TestTimeTuning.aug_ratio
-
+            
             api.test_time_tuning_presaved_models(gnn)
     api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
 
