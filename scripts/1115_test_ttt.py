@@ -79,7 +79,7 @@ def search_para(num_iter: int, num_aug: int, d: int):
 
             if config.TestTimeTuning.aug == 'featM':
                 gnn.mask_ratio = config.TestTimeTuning.aug_ratio
-            
+
             api.test_time_tuning_presaved_models(gnn)
     api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
 

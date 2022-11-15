@@ -38,9 +38,10 @@ if __name__ == '__main__':
         for ds in config.datasets:
             config.Tuning.lr = 1e-3 if ds != 'muv' else 1e-4
             config.Tuning.use_lr_scheduler = True if ds == 'bace' else False
+            config.TuningDataset.dataset = ds
             encoder = api.get_configured_encoder()
-            encoder.enable_selfloop()
             encoder.load_state_dict(e_states)
+            encoder.enable_selfloop()
             api.tune(encoder)
 
     api.analyze_results_by_ratio()
