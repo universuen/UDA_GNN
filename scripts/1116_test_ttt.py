@@ -51,7 +51,7 @@ def tune_and_save():
 
 
 def search_para(num_iter: int, num_aug: int, d: int):
-    config.config_name = f'1115_ttt_ni{num_iter}_na{num_aug}'
+    config.config_name = f'1116_ttt_ni{num_iter}_na{num_aug}'
     config.device = f'cuda:{d}'
     config.Encoder.drop_ratio = 0.5
     config.TestTimeTuning.aug = 'dropout'
