@@ -29,14 +29,9 @@ def tune_and_save():
     Pretraining
     """
     # load models from ROM
-    encoder = api.get_configured_encoder()
-    decoder = api.get_configured_decoder()
     with open(config.Paths.models / 'm35_e_d.pth', 'rb') as f:
         states_dict = torch.load(f, map_location=lambda storage, loc: storage)
-        encoder.load_state_dict(states_dict['encoder'])
-        decoder.load_state_dict(states_dict['decoder'])
-    e_states = deepcopy(encoder.state_dict())
-    d_states = deepcopy(decoder.state_dict())
+    e_states = states_dict['encoder']
 
     """
     Tune and save the model
@@ -45,11 +40,11 @@ def tune_and_save():
         config.seed = seed
         api.set_seed(config.seed)
         for ds in config.datasets:
-            encoder.load_state_dict(e_states)
-            decoder.load_state_dict(d_states)
+            config.Tuning.lr = 1e-3 if ds != 'muv' else 1e-4
+            config.Tuning.use_lr_scheduler = True if ds == 'bace' else False
             config.TuningDataset.dataset = ds
-            config.Tuning.use_lr_scheduler = ds == 'bace'
-            config.Tuning.lr = 1e-4 if ds == 'muv' else 1e-3
+            encoder = api.get_configured_encoder()
+            encoder.load_state_dict(e_states)
             encoder.enable_selfloop()
             api.tune_and_save_models(encoder)
     api.analyze_ttt_results_by_ratio(item_name='te_auc')
