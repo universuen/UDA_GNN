@@ -80,10 +80,10 @@ def search_para(num_iter: int, num_aug: int, d: int):
 
 
 if __name__ == '__main__':
-    tune_and_save()
-    # for num_iter in (1, 2, 5):
-    #     for d, num_aug in enumerate((8, 16, 32)):
-    #         Process(
-    #             target=search_para,
-    #             args=(num_iter, num_aug, d),
-    #         ).start()
+    # tune_and_save()
+    for num_iter in (1, 2, 5):
+        for d, num_aug in enumerate((8, 16, 32)):
+            Process(
+                target=search_para,
+                args=(num_iter, num_aug, d),
+            ).start()
