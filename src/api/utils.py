@@ -659,8 +659,6 @@ def tune_and_save_models(gnn):
 
 
 def test_time_tuning_presaved_models(gnn):
-    if config.OneSampleBN.is_enabled:
-        api.replace_bn()
     if config.TestTimeTuning.add_prompts:
         gnn.node_prompts = nn.ModuleList(
             [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]

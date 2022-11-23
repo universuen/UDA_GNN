@@ -26,6 +26,8 @@ def search_para(device: int, prior: float):
     config.OneSampleBN.strength = prior
     if DEBUG:
         api.set_debug_mode()
+    if config.OneSampleBN.is_enabled:
+        api.replace_bn()
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
