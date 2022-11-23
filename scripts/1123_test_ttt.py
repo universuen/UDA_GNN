@@ -58,7 +58,7 @@ def search_para(num_iter: int, num_aug: int, d: int):
     config.TestTimeTuning.aug_ratio = 0.5
     config.TestTimeTuning.num_iterations = num_iter
     config.TestTimeTuning.num_augmentations = num_aug
-    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / CONFIG_NAME)
+    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / '1116_test_ttt')
     config.OneSampleBN.is_enabled = True
     if DEBUG:
         api.set_debug_mode()
