@@ -51,7 +51,7 @@ def tune_and_save():
 
 
 def search_para(num_iter: int, num_aug: int, d: int):
-    config.config_name = f'1116_ttt_ni{num_iter}_na{num_aug}'
+    config.config_name = f'112316_ttt_ni{num_iter}_na{num_aug}'
     config.device = f'cuda:{d}'
     config.Encoder.drop_ratio = 0.5
     config.TestTimeTuning.aug = 'dropout'
@@ -59,6 +59,7 @@ def search_para(num_iter: int, num_aug: int, d: int):
     config.TestTimeTuning.num_iterations = num_iter
     config.TestTimeTuning.num_augmentations = num_aug
     config.TestTimeTuning.presaved_model_path = str(config.Paths.models / CONFIG_NAME)
+    config.OneSampleBN.is_enabled = True
     if DEBUG:
         api.set_debug_mode()
     for seed in config.loop_seeds:
