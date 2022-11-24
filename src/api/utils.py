@@ -465,8 +465,6 @@ def ttt_prompt_eval(clf_model, loader):
 
 
 def test_time_tuning(gnn):
-    if config.OneSampleBN.is_enabled:
-        api.replace_bn()
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
