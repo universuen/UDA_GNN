@@ -507,6 +507,7 @@ def test_time_tuning(gnn):
     va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
     te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
+    te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
 
     models_dir = config.Paths.models / config.config_name
     models_dir.mkdir(exist_ok=True)
@@ -535,20 +536,26 @@ def test_time_tuning(gnn):
         va_auc_history.save()
         te_auc_history.save()
 
-
         if (e + 1) % config.TestTimeTuning.eval_epoch == 0:
-            te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
+            if config.TestTimeTuning.add_prompts:
+                ttt_auc, aug_auc = ttt_prompt_eval(clf, te_ttt_loader)
+            else:
+                ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
+            te_ttt_auc_history.append(ttt_auc)
+            te_aug_auc_history.append(aug_auc)
+
+            te_auc_history.save()
             te_ttt_auc_history.save()
+            te_aug_auc_history.save()
             logger.info(
                 training_bar(
                     e,
                     config.Tuning.epochs,
-                    loss=loss_history.last_one,
-                    tr_auc=tr_auc_history.last_one,
-                    va_auc=va_auc_history.last_one,
                     te_auc=te_auc_history.last_one,
                     te_ttt_auc=te_ttt_auc_history.last_one,
-                    ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
+                    ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one,
+                    te_aug_auc=te_aug_auc_history.last_one,
+                    aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
                 )
             )
         else:
