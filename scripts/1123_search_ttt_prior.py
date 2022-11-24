@@ -14,7 +14,7 @@ DEVICE: int = 0
 
 
 def search_para(device: int, prior: float):
-    config.config_name = f'1123_ttt_p{prior}'
+    config.config_name = f'1124_ttt_p{prior}'
     config.device = f'cuda:{device}'
     config.Encoder.drop_ratio = 0.5
     config.TestTimeTuning.aug = 'dropout'
@@ -47,7 +47,7 @@ def search_para(device: int, prior: float):
 
 
 if __name__ == '__main__':
-    for d, p in enumerate([4, 8, 32]):
+    for d, p in enumerate([1, 2, 3, 6]):
         Process(
             target=search_para,
             args=(d, p),
