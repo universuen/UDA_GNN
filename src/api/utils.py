@@ -544,7 +544,6 @@ def test_time_tuning(gnn):
             te_ttt_auc_history.append(ttt_auc)
             te_aug_auc_history.append(aug_auc)
 
-            te_auc_history.save()
             te_ttt_auc_history.save()
             te_aug_auc_history.save()
             logger.info(

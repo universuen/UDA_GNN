@@ -76,10 +76,9 @@ def search_para(mask_rate, pretraining_epochs, device):
 
 
 if __name__ == '__main__':
-    search_para(0.35, 2, 0)
-    # for mr in (0.25, 0.40, 0.45):
-    #     for d, pe in enumerate((10, 20, 50, 100)):
-    #         Process(
-    #             target=search_uda_ttt_pretrain_para,
-    #             args=(mr, pe, d),
-    #         ).start()
+    for mr in (0.25, 0.40, 0.45):
+        for d, pe in enumerate((10, 20, 50, 100)):
+            Process(
+                target=search_para,
+                args=(mr, pe, d),
+            ).start()
