@@ -240,6 +240,10 @@ class OneSampleBN(_Config):
     strength: int = 16
 
 
+class SSF(_Config):
+    is_enabled: bool = False
+
+
 _all_items = vars().values()
 
 
