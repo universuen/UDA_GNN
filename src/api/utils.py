@@ -20,6 +20,10 @@ def replace_bn():
     nn.BatchNorm1d = src.model.OneSampleBN
 
 
+def replace_linear():
+    nn.Linear = src.model.SSLinear
+
+
 def set_bn_prior(value: float):
     src.model.OneSampleBN.prior = value
 
@@ -464,6 +468,87 @@ def ttt_prompt_eval(clf_model, loader):
     return mean_roc, mean_aug_roc
 
 
+def ttt_ssf_eval(clf_model, loader):
+    set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
+
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+
+    clf_model.eval()
+    # collect ss linear parameters
+    ss_parameters = []
+    for i in clf_model.modules():
+        if isinstance(i, src.model.SSLinear):
+            ss_parameters.append(i.gamma)
+            ss_parameters.append(i.beta)
+
+    optimizer = torch.optim.Adam(
+        params=ss_parameters,
+        lr=config.Tuning.lr,
+    )
+    # back up
+    clf_states = copy.deepcopy(clf_model.state_dict())
+    optim_states = copy.deepcopy(optimizer.state_dict())
+
+    y_true = []
+    y_scores = []
+    y_aug_scores = []
+    for data, augmentations in loader:
+        if config.TestTimeTuning.aug == 'dropout' or config.TestTimeTuning.aug == 'featM':
+            clf_model.train()
+            freeze_bn(clf_model)
+
+        data.to(config.device)
+        augmentations.to(config.device)
+
+        # adapt
+        aug_pre_list = []
+        for _ in range(config.TestTimeTuning.num_iterations):
+            optimizer.zero_grad()
+            outputs = clf_model(augmentations)
+            if config.TestTimeTuning.conf_ratio < 1:
+                outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+            # loss, aug_pre = marginal_entropy_bce_v2(outputs)
+            loss, aug_pre = marginal_entropy_bce_v2(outputs)
+            loss.backward()
+            optimizer.step()
+            aug_pre_list.append(aug_pre)
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
+        # test
+        with torch.no_grad():
+            clf_model.eval()
+            pred = clf_model(data)
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
+        # reset
+        clf_model.load_state_dict(clf_states)
+        optimizer.load_state_dict(optim_states)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
+
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+    set_bn_prior(1)
+    return mean_roc, mean_aug_roc
+
+
 def test_time_tuning(gnn):
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
@@ -507,6 +592,7 @@ def test_time_tuning(gnn):
     va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
     te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
+    te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
 
     models_dir = config.Paths.models / config.config_name
     models_dir.mkdir(exist_ok=True)
@@ -535,20 +621,27 @@ def test_time_tuning(gnn):
         va_auc_history.save()
         te_auc_history.save()
 
-
         if (e + 1) % config.TestTimeTuning.eval_epoch == 0:
-            te_ttt_auc_history.append(ttt_eval(clf, te_ttt_loader))
+            if config.TestTimeTuning.add_prompts:
+                ttt_auc, aug_auc = ttt_prompt_eval(clf, te_ttt_loader)
+            elif config.SSF.is_enabled:
+                ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
+            else:
+                ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
+            te_ttt_auc_history.append(ttt_auc)
+            te_aug_auc_history.append(aug_auc)
+
             te_ttt_auc_history.save()
+            te_aug_auc_history.save()
             logger.info(
                 training_bar(
                     e,
                     config.Tuning.epochs,
-                    loss=loss_history.last_one,
-                    tr_auc=tr_auc_history.last_one,
-                    va_auc=va_auc_history.last_one,
                     te_auc=te_auc_history.last_one,
                     te_ttt_auc=te_ttt_auc_history.last_one,
-                    ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one
+                    ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one,
+                    te_aug_auc=te_aug_auc_history.last_one,
+                    aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
                 )
             )
         else:
