@@ -58,7 +58,12 @@ def search_para(num_iter: int, num_aug: int, d: int):
     config.TestTimeTuning.aug_ratio = 0.5
     config.TestTimeTuning.num_iterations = num_iter
     config.TestTimeTuning.num_augmentations = num_aug
-    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / CONFIG_NAME)
+    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / CONFIG_NAME)    
+    config.OneSampleBN.is_enabled = True
+    
+    if config.OneSampleBN.is_enabled:
+        api.replace_bn()
+
     if DEBUG:
         api.set_debug_mode()
     for seed in config.loop_seeds:
@@ -81,9 +86,12 @@ def search_para(num_iter: int, num_aug: int, d: int):
 
 if __name__ == '__main__':
     # tune_and_save()
+    dd = [[0,1,2], [2, 0, 1], [1,2,0]]
+    j = 0
     for num_iter in (1, 2, 5):
         for d, num_aug in enumerate((8, 16, 32)):
             Process(
                 target=search_para,
-                args=(num_iter, num_aug, d),
+                args=(num_iter, num_aug, dd[j][d]),
             ).start()
+        j += 1
