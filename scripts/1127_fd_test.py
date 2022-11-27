@@ -78,7 +78,7 @@ def search_para(freeze_decoder: bool, dssl_lr: float, device: int):
 if __name__ == '__main__':
     device_matrix = [
         [0, 1, 2],
-        [3, 4, 5],
+        [0, 1, 2],
     ]
     for i, fd in enumerate([True, False]):
         for j, lr in enumerate([1e-4, 5e-4, 1e-3]):
