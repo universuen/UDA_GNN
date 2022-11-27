@@ -64,6 +64,93 @@ def pretrain(model: src.types.PretrainingModel):
     loss_history.save()
 
 
+def ssf_tune(gnn: src.types.GNNModel):
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Tuning')
+
+    logger.debug('Prepare')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    # set up dataloaders
+    tr_loader = get_eval_loader(tr_dataset)
+    va_loader = get_eval_loader(va_dataset)
+    te_loader = get_eval_loader(te_dataset)
+    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
+    # set up classifier, optimizer, and criterion
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+    # collect ss linear parameters
+    ss_parameters = []
+    for i in clf.modules():
+        if isinstance(i, src.model.SSLinear):
+            ss_parameters.append(i.gamma)
+            ss_parameters.append(i.beta)
+    optimizer = torch.optim.Adam(ss_parameters, config.Tuning.lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=optimizer,
+        step_size=30,
+        gamma=0.3,
+    )
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # prepare to record evaluations
+    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
+    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
+    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+
+    logger.debug('Training loop')
+    for e in range(config.Tuning.epochs):
+        clf.train()
+        for idx, batch in enumerate(training_loader):
+            batch = batch.to(config.device)
+            pred = clf(batch)
+            y = batch.y.view(pred.shape).to(torch.float64)
+            is_valid = y ** 2 > 0  # shape = [N, C]
+            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
+            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
+            optimizer.zero_grad()
+            loss = torch.sum(loss_mat) / torch.sum(is_valid)
+            loss.backward()
+            optimizer.step()
+            loss_history.append(loss)
+            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
+        tr_auc_history.append(eval_chem(clf, tr_loader))
+        va_auc_history.append(eval_chem(clf, va_loader))
+        te_auc_history.append(eval_chem(clf, te_loader))
+        tr_auc_history.save()
+        va_auc_history.save()
+        te_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                loss=loss_history.last_one,
+                tr_auc=tr_auc_history.last_one,
+                va_auc=va_auc_history.last_one,
+                te_auc=te_auc_history.last_one,
+            )
+        )
+        if config.Tuning.use_lr_scheduler:
+            lr_scheduler.step()
+            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
+
+    logger.debug('Save the final model')
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
+    torch.save(
+        gnn.state_dict(),
+        models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}.pt'
+    )
+
+
 def tune(gnn: src.types.GNNModel):
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
@@ -377,14 +464,14 @@ def train_mae(
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(loader)}')
         logger.info(training_bar(e, config.Pretraining.epochs, loss=loss_history.last_one))
-        
+
         if (e + 1) % config.Pretraining.save_epoch == 0:
-            logger.debug(f'saving mae encoder and decoder at the {e+1} epoch')
+            logger.debug(f'saving mae encoder and decoder at the {e + 1} epoch')
             torch.save(
                 {
-                    'encoder': encoder.state_dict(), 
-                    'decoder': decoder.state_dict(), 
+                    'encoder': encoder.state_dict(),
+                    'decoder': decoder.state_dict(),
                 },
-                models_dir / f'mae_{config.PretrainingDataset.dataset}_e{e+1}_s{config.seed}.pt'
+                models_dir / f'mae_{config.PretrainingDataset.dataset}_e{e + 1}_s{config.seed}.pt'
             )
     loss_history.save()

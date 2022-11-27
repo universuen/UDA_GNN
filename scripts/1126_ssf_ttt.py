@@ -33,7 +33,7 @@ if __name__ == '__main__':
     e_states = states_dict['encoder']
     d_states = states_dict['decoder']
 
-    # DP and TTT
+    # TTT
     for seed in config.loop_seeds:
         config.seed = seed
         api.set_seed(config.seed)
@@ -53,7 +53,7 @@ if __name__ == '__main__':
             config.Tuning.use_lr_scheduler = ds == 'bace'
 
             encoder = api.get_configured_encoder()
-            encoder.load_state_dict(e_states)
+            encoder.load_state_dict(e_states, strict=False)
             encoder.enable_selfloop()
 
             api.test_time_tuning(encoder)
