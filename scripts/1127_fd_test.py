@@ -76,10 +76,14 @@ def search_para(freeze_decoder: bool, dssl_lr: float, device: int):
 
 
 if __name__ == '__main__':
+    from multiprocessing import Process
     device_matrix = [
         [0, 1, 2],
         [0, 1, 2],
     ]
     for i, fd in enumerate([True, False]):
         for j, lr in enumerate([1e-4, 5e-4, 1e-3]):
-            search_para(fd, lr, device_matrix[i][j])
+            Process(
+                target=search_para,
+                args=(fd, lr, device_matrix[i][j]),
+            ).start()
