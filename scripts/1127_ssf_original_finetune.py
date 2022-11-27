@@ -73,4 +73,4 @@ if __name__ == '__main__':
 
             api.ssf_tune(encoder)
 
-    api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
+    api.analyze_results_by_ratio()

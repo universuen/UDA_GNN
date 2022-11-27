@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import torch.nn
 from torch import nn
 
 from .utils import *
@@ -414,6 +415,7 @@ def tune_linear(gnn: src.types.GNNModel):
 def train_mae(
         encoder: src.model.gnn.mae.Encoder,
         decoder: src.model.gnn.mae.Decoder,
+        freeze_decoder: bool = False,
 ):
     logger = api.get_configured_logger(f'pretrain_{config.PretrainingDataset.dataset}_{config.seed}')
     log_all_config(logger)
@@ -431,7 +433,7 @@ def train_mae(
         lr=config.Pretraining.lr,
     )
     d_optimizer = torch.optim.Adam(
-        params=decoder.parameters(),
+        params=decoder.parameters() if not freeze_decoder else [torch.zeros(1)],
         lr=config.Pretraining.lr,
     )
 
