@@ -578,8 +578,13 @@ def test_time_tuning(gnn):
         dataset=config.TuningDataset.dataset,
         use_graph_trans=config.Pretraining.use_graph_trans,
     ).to(config.device)
-    # optimizers
-    optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
+    # collect ss linear parameters
+    ss_parameters = []
+    for i in clf.modules():
+        if isinstance(i, src.model.SSLinear):
+            ss_parameters.append(i.gamma)
+            ss_parameters.append(i.beta)
+    optimizer = torch.optim.Adam(ss_parameters, config.Tuning.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer=optimizer,
         step_size=30,
