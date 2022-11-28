@@ -489,12 +489,11 @@ def ttt_ssf_eval(clf_model, loader):
 
     clf_model.eval()
     # collect ss linear parameters
-    ss_parameters = []
+    ss_parameters = list(clf_model.linear.parameters())
     for i in clf_model.modules():
-        if isinstance(i, src.model.SSLinear):
+        if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
             ss_parameters.append(i.gamma)
             ss_parameters.append(i.beta)
-
     optimizer = torch.optim.Adam(
         params=ss_parameters,
         lr=config.Tuning.lr,
@@ -579,16 +578,7 @@ def test_time_tuning(gnn):
         dataset=config.TuningDataset.dataset,
         use_graph_trans=config.Pretraining.use_graph_trans,
     ).to(config.device)
-    if config.SSF.is_enabled:
-        # collect ss linear parameters
-        ss_parameters = list(clf.linear.parameters())
-        for i in clf.modules():
-            if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
-                ss_parameters.append(i.gamma)
-                ss_parameters.append(i.beta)
-        optimizer = torch.optim.Adam(ss_parameters, config.Tuning.lr)
-    else:
-        optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
+    optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer=optimizer,
         step_size=30,
