@@ -15,17 +15,23 @@ CONFIG_NAME: str = api.get_current_filename(__file__)
 DEVICE: int = 0
 
 
-# define original forward method
-def original_forward(
-        self: model.SSLinear,
-        x: torch.Tensor
-) -> torch.Tensor:
-    y = functional.linear(x, self.weight, self.bias)
-    return self.gamma * y + self.beta
+# define original SSF
+class OriginalSSLinear(model.SSLinear):
+    def __init__(self, in_features: int, out_features: int):
+        super().__init__(in_features, out_features)
+        self.fixed_gamma = torch.ones(1).detach()
+        self.fixed_beta = torch.zeros(1).detach()
 
 
-# replace
-model.SSLinear.forward = original_forward
+class OriginalSSBatchNorm(model.SSBatchNorm):
+    def __init__(self, num_features):
+        super().__init__(num_features)
+        self.fixed_gamma = torch.ones(1).detach()
+        self.fixed_beta = torch.zeros(1).detach()
+
+
+model.SSLinear = OriginalSSLinear
+model.SSBatchNorm = OriginalSSBatchNorm
 
 if __name__ == '__main__':
     # set configs
@@ -40,7 +46,7 @@ if __name__ == '__main__':
     if config.OneSampleBN.is_enabled:
         api.replace_bn()
     if config.SSF.is_enabled:
-        api.replace_linear()
+        api.replace_with_ssf()
 
     # load models from ROM
     with open(config.Paths.models / 'm35_e_d.pth', 'rb') as f:

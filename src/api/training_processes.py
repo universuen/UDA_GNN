@@ -91,11 +91,9 @@ def ssf_tune(gnn: src.types.GNNModel):
     # collect ss linear parameters
     ss_parameters = list(clf.linear.parameters())
     for i in clf.modules():
-        if isinstance(i, src.model.SSLinear):
+        if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
             ss_parameters.append(i.gamma)
             ss_parameters.append(i.beta)
-        if isinstance(i, torch.nn.BatchNorm1d):
-            ss_parameters.extend(list(i.parameters()))
     optimizer = torch.optim.Adam(ss_parameters, config.Tuning.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer=optimizer,

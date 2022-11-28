@@ -25,7 +25,7 @@ if __name__ == '__main__':
     if config.OneSampleBN.is_enabled:
         api.replace_bn()
     if config.SSF.is_enabled:
-        api.replace_linear()
+        api.replace_with_ssf()
 
     # load models from ROM
     with open(config.Paths.models / 'm35_e_d.pth', 'rb') as f:

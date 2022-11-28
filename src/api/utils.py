@@ -20,8 +20,9 @@ def replace_bn():
     nn.BatchNorm1d = src.model.OneSampleBN
 
 
-def replace_linear():
+def replace_with_ssf():
     nn.Linear = src.model.SSLinear
+    nn.BatchNorm1d = src.model.SSBatchNorm
 
 
 def set_bn_prior(value: float):
@@ -582,11 +583,9 @@ def test_time_tuning(gnn):
         # collect ss linear parameters
         ss_parameters = list(clf.linear.parameters())
         for i in clf.modules():
-            if isinstance(i, src.model.SSLinear):
+            if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
                 ss_parameters.append(i.gamma)
                 ss_parameters.append(i.beta)
-            if isinstance(i, torch.nn.BatchNorm1d):
-                ss_parameters.extend(list(i.parameters()))
         optimizer = torch.optim.Adam(ss_parameters, config.Tuning.lr)
     else:
         optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
