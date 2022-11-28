@@ -580,11 +580,13 @@ def test_time_tuning(gnn):
     ).to(config.device)
     if config.SSF.is_enabled:
         # collect ss linear parameters
-        ss_parameters = []
+        ss_parameters = list(clf.linear.parameters())
         for i in clf.modules():
             if isinstance(i, src.model.SSLinear):
                 ss_parameters.append(i.gamma)
                 ss_parameters.append(i.beta)
+            if isinstance(i, torch.nn.BatchNorm1d):
+                ss_parameters.extend(list(i.parameters()))
         optimizer = torch.optim.Adam(ss_parameters, config.Tuning.lr)
     else:
         optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
