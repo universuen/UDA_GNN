@@ -18,8 +18,8 @@ class NodePrompt(nn.Module):
         self.mode = mode
 
     def init_weights(self):
-        glorot(self.value)
-        glorot(self.b)
+        nn.init.normal_(self.value, mean=1, std=0.02)
+        nn.init.normal_(self.b, std=0.02)
 
     def forward(self, x: torch.Tensor):
         # the operation can be modified later
