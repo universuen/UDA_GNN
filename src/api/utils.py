@@ -264,7 +264,7 @@ def analyze_ttt_results_by_ratio(ratios: list[int] = None, item_name: str = 'te_
 
     results = pd.DataFrame.from_dict(results)
     print(results)
-    results.to_excel(config.Paths.results / config.config_name / 'analyzed_results.xlsx')
+    results.to_excel(config.Paths.results / config.config_name / 'analyzed_ttt_results.xlsx')
 
 
 def marginal_entropy(outputs):
