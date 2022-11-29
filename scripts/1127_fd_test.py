@@ -14,7 +14,7 @@ CONFIG_NAME: str = api.get_current_filename(__file__)
 
 def search_para(freeze_decoder: bool, dssl_lr: float, device: int):
     # set configs
-    config.config_name = f'{CONFIG_NAME}_fd{freeze_decoder}_lr{lr}'
+    config.config_name = f'{CONFIG_NAME}_fd{freeze_decoder}_lr{dssl_lr}'
     config.device = f'cuda:{device}'
     config.OneSampleBN.is_enabled = True
     config.OneSampleBN.strength = 8
@@ -76,14 +76,16 @@ def search_para(freeze_decoder: bool, dssl_lr: float, device: int):
 
 
 if __name__ == '__main__':
-    from multiprocessing import Process
-    device_matrix = [
-        [0, 1, 2],
-        [0, 1, 2],
-    ]
-    for i, fd in enumerate([True, False]):
-        for j, lr in enumerate([1e-4, 5e-4, 1e-3]):
-            Process(
-                target=search_para,
-                args=(fd, lr, device_matrix[i][j]),
-            ).start()
+    CONFIG_NAME = 'TEST_D'
+    search_para(True, 1e-3, 0)
+    # from multiprocessing import Process
+    # device_matrix = [
+    #     [0, 1, 2],
+    #     [0, 1, 2],
+    # ]
+    # for i, fd in enumerate([True, False]):
+    #     for j, lr in enumerate([1e-4, 5e-4, 1e-3]):
+    #         Process(
+    #             target=search_para,
+    #             args=(fd, lr, device_matrix[i][j]),
+    #         ).start()

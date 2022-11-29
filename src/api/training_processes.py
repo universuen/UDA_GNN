@@ -454,7 +454,7 @@ def train_mae(
         for idx, batch in enumerate(loader):
             batch.to(config.device)
             e_optimizer.zero_grad()
-            d_optimizer.zero_grad()
+            decoder.zero_grad()
             node_rep = encoder(batch.x, batch.edge_index, batch.edge_attr)
             node_attr_label = batch.node_attr_label
             masked_node_indices = batch.masked_atom_indices
