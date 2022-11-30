@@ -83,7 +83,7 @@ if __name__ == '__main__':
     #             target=search_para,
     #             args=(mr, pe, d),
     #         ).start()
-    for pe in enumerate((10, 20, 50, 100)):
+    for pe in (10, 20, 50, 100):
         Process(
             target=search_para,
             args=(0.35, pe, 0),
