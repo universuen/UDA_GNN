@@ -494,6 +494,10 @@ def ttt_ssf_eval(clf_model, loader):
         if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
             ss_parameters.append(i.gamma)
             ss_parameters.append(i.beta)
+    if config.Tuning.use_node_prompt:
+        for prompt in clf_model.gnn.node_prompts:
+            ss_parameters += list(prompt.parameters())
+
     optimizer = torch.optim.Adam(
         params=ss_parameters,
         lr=config.Tuning.lr,
@@ -795,9 +799,11 @@ def test_time_tuning_presaved_models(gnn):
             input()
             break
 
-        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
         te_auc_history.append(eval_chem(clf, te_loader))
-        if config.TestTimeTuning.add_prompts:
+        if config.SSF.is_enabled:
+            ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
+        elif config.TestTimeTuning.add_prompts:
             ttt_auc, aug_auc = ttt_prompt_eval(clf, te_ttt_loader)
         else:
             ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
