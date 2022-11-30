@@ -19,6 +19,7 @@ if __name__ == '__main__':
     config.OneSampleBN.is_enabled = True
     config.OneSampleBN.strength = 8
     config.SSF.is_enabled = True
+    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / '1116_test_ttt')
 
     if DEBUG:
         api.set_debug_mode()
