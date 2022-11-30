@@ -15,7 +15,7 @@ DEVICE: int = 0
 if __name__ == '__main__':
     # set configs
     config.config_name = CONFIG_NAME
-    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / 'graphmae80_models_v2')
+    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / '1116_test_ttt')
     config.device = f'cuda:{DEVICE}'
     config.SSF.is_enabled = True
 
