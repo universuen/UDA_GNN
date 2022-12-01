@@ -15,7 +15,7 @@ DEVICE: int = 0
 
 def search_para(epochs: int, e_drop_ratio: float):
     # set configs
-    config.config_name = CONFIG_NAME
+    config.config_name = f'{CONFIG_NAME}_e{epochs}_edr{e_drop_ratio}'
     config.device = f'cuda:{DEVICE}'
     config.OneSampleBN.is_enabled = True
     config.OneSampleBN.strength = 8
