@@ -314,6 +314,22 @@ def marginal_entropy_bce_v2(outputs):
     return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
 
 
+def marginal_entropy_bce_batch(outputs, N):
+    """
+    outputs: shape = [B * N, C]. N is the number of augmentations, C is the number of binary classes, B is the batch size
+    """
+    C = outputs.shape[-1]
+    zeros = torch.zeros_like(outputs)
+    outputs = torch.stack((outputs, zeros), dim=-1)  # shape = [B * N, C, 2]
+    logits = outputs - outputs.logsumexp(dim=-1, keepdim=True)  # shape = [B * N, C, 2]
+    logits = logits.reshape(-1, N, C, 2) # shape = [B, N, C, 2]
+    avg_logits = logits.logsumexp(dim=1) - np.log(N)  # shape = [B, C, 2]
+    min_real = torch.finfo(avg_logits.dtype).min
+    avg_logits = torch.clamp(avg_logits, min=min_real)
+    avg_ps = avg_logits[:, :, 0].detach().reshape(-1, C).exp()
+    return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
+
+
 def freeze_bn(model):
     for module in model.modules():
         if isinstance(module, nn.BatchNorm1d) or isinstance(module, nn.BatchNorm2d):
@@ -444,10 +460,7 @@ def cl_eval(clf_model, loader):
         for _ in range(config.TestTimeTuning.num_iterations):
             optimizer.zero_grad()
             outputs = clf_model(augmentations)
-            if config.TestTimeTuning.conf_ratio < 1:
-                outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
-
-            loss, aug_pre = marginal_entropy_bce_v2(outputs)
+            loss, aug_pre = marginal_entropy_bce_batch(outputs, config.TestTimeTuning.num_augmentations)
             loss.backward()
             optimizer.step()
             aug_pre_list.append(aug_pre)
