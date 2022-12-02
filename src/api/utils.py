@@ -335,6 +335,10 @@ def freeze_bn(model):
         if isinstance(module, nn.BatchNorm1d) or isinstance(module, nn.BatchNorm2d):
             module.eval()
 
+def freeze_dropout(model):
+    for module in model.modules():
+        if isinstance(module, nn.Dropout):
+            module.eval()
 
 def ttt_eval(clf_model, loader):
     set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
@@ -436,9 +440,9 @@ def cl_eval(clf_model, loader):
     y_scores = []
     y_aug_scores = []
     for data in loader:
-        if config.TestTimeTuning.aug == 'dropout' or config.TestTimeTuning.aug == 'featM':
-            clf_model.train()
-            freeze_bn(clf_model)
+        clf_model.train()
+        if config.TestTimeTuning.aug != 'dropout':
+            freeze_dropout(clf_model)
 
         # build augmentations
         augmented_data = []

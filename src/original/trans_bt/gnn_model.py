@@ -247,6 +247,8 @@ class GNN(torch.nn.Module):
         for layer in range(num_layer):
             self.batch_norms.append(nn.BatchNorm1d(emb_dim))
 
+        self.dropout = nn.Dropout(drop_ratio)
+
     # def forward(self, x, edge_index, edge_attr):
     def forward(self, *argv):
         if len(argv) == 3:
@@ -265,9 +267,9 @@ class GNN(torch.nn.Module):
             h = self.batch_norms[layer](h)
             if layer == self.num_layer - 1:
                 # remove relu for the last layer
-                h = F.dropout(h, self.drop_ratio, training=self.training)
+                h = self.dropout(h)
             else:
-                h = F.dropout(F.relu(h), self.drop_ratio, training=self.training)
+                h = self.dropout(F.relu(h))
             h_list.append(h)
 
         ### Different implementations of Jk-concat
@@ -326,6 +328,8 @@ class EqvGNN(torch.nn.Module):
         self.batch_norms = torch.nn.ModuleList()
         for layer in range(num_layer):
             self.batch_norms.append(nn.BatchNorm1d(emb_dim))
+        
+        self.dropout = nn.Dropout(drop_ratio)
 
     def forward(self, *args):
         if len(args) == 1:
@@ -351,9 +355,9 @@ class EqvGNN(torch.nn.Module):
             h = self.batch_norms[layer](h)
             if layer == self.num_layer - 1:
                 # remove relu for the last layer
-                h = F.dropout(h, self.drop_ratio, training=self.training)
+                h = self.dropout(h)
             else:
-                h = F.dropout(F.relu(h), self.drop_ratio, training=self.training)
+                h = self.dropout(F.relu(h))
             h_list.append(h)
 
         ### Different implementations of Jk-concat
