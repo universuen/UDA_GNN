@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
+import copy
 
 import torch
 import numpy as np
 import pandas as pd
+from torch_geometric.data import Batch
 from torch_geometric.loader import DataLoader
 from torch import nn
 from sklearn.metrics import roc_auc_score
 
 import src
-import copy
 from src.original.trans_bt.splitters import scaffold_split
 from src import config, api
-from pathlib import Path
+from src.original.trans_bt.loader import augment
 
 
 def replace_bn():
@@ -392,6 +394,84 @@ def ttt_eval(clf_model, loader):
     return mean_roc, mean_aug_roc
 
 
+def cl_eval(clf_model, loader):
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+
+    clf_model.eval()
+    optimizer = torch.optim.Adam(
+        params=clf_model.parameters(),
+        lr=config.Tuning.lr,
+    )
+
+    y_true = []
+    y_scores = []
+    y_aug_scores = []
+    for data in loader:
+        if config.TestTimeTuning.aug == 'dropout' or config.TestTimeTuning.aug == 'featM':
+            clf_model.train()
+            freeze_bn(clf_model)
+
+        # build augmentations
+        augmented_data = []
+        for i in data.to_data_list():
+            augmented_data += [
+                augment(
+                    i.clone(),
+                    aug='none' if config.TestTimeTuning.aug in ['dropout', 'featM'] else config.TestTimeTuning.aug,
+                    aug_ratio=config.TestTimeTuning.aug_ratio,
+                )
+                for _ in range(config.TestTimeTuning.num_augmentations)
+            ]
+        augmentations = Batch.from_data_list(augmented_data)
+
+        data.to(config.device)
+        augmentations.to(config.device)
+        # adapt
+        aug_pre_list = []
+        for _ in range(config.TestTimeTuning.num_iterations):
+            optimizer.zero_grad()
+            outputs = clf_model(augmentations)
+            if config.TestTimeTuning.conf_ratio < 1:
+                outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+
+            loss, aug_pre = marginal_entropy_bce_v2(outputs)
+            loss.backward()
+            optimizer.step()
+            aug_pre_list.append(aug_pre)
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
+        # test
+        with torch.no_grad():
+            clf_model.eval()
+            pred = clf_model(data)
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
+
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+
+    return mean_roc, mean_aug_roc
+
+
 def ttt_prompt_eval(clf_model, loader):
     set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
 
@@ -752,6 +832,69 @@ def tune_and_save_models(gnn):
             )
 
 
+def cl_presaved_models(gnn):
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Test Time Tuning')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    te_loader = get_eval_loader(te_dataset)
+    # transform to TTT dataset
+    # te_dataset = api.get_configured_ttt_dataset(te_dataset)
+    te_cl_loader = DataLoader(
+        dataset=te_dataset,
+        batch_size=config.Tuning.batch_size,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=True,
+    )
+    # set up classifier, optimizer, and criterion
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+
+    # prepare to record evaluations
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+    te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
+    te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
+
+    logger.debug('Start loading models and evaluation.')
+    for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
+        model_path = Path(
+            config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
+        if not model_path.exists():
+            logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
+            input()
+            break
+
+        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
+        te_auc_history.append(eval_chem(clf, te_loader))
+        ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
+        te_ttt_auc_history.append(ttt_auc)
+        te_aug_auc_history.append(aug_auc)
+
+        te_auc_history.save()
+        te_ttt_auc_history.save()
+        te_aug_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                te_auc=te_auc_history.last_one,
+                te_ttt_auc=te_ttt_auc_history.last_one,
+                ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one,
+                te_aug_auc=te_aug_auc_history.last_one,
+                aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
+            )
+        )
+
+
 def test_time_tuning_presaved_models(gnn):
     if config.TestTimeTuning.add_prompts:
         gnn.node_prompts = nn.ModuleList(
@@ -799,7 +942,7 @@ def test_time_tuning_presaved_models(gnn):
             input()
             break
 
-        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
+        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         te_auc_history.append(eval_chem(clf, te_loader))
         if config.SSF.is_enabled:
             ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
