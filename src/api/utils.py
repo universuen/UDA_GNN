@@ -439,23 +439,10 @@ def cl_eval(clf_model, loader):
     y_true = []
     y_scores = []
     y_aug_scores = []
-    for data in loader:
+    for data, augmentations in loader:
         clf_model.train()
         if config.TestTimeTuning.aug != 'dropout':
             freeze_dropout(clf_model)
-
-        # build augmentations
-        augmented_data = []
-        for i in data.to_data_list():
-            augmented_data += [
-                augment(
-                    i.clone(),
-                    aug='none' if config.TestTimeTuning.aug in ['dropout', 'featM'] else config.TestTimeTuning.aug,
-                    aug_ratio=config.TestTimeTuning.aug_ratio,
-                )
-                for _ in range(config.TestTimeTuning.num_augmentations)
-            ]
-        augmentations = Batch.from_data_list(augmented_data)
 
         data.to(config.device)
         augmentations.to(config.device)
@@ -862,8 +849,11 @@ def cl_presaved_models(gnn):
     te_loader = get_eval_loader(te_dataset)
     # transform to TTT dataset
     # te_dataset = api.get_configured_ttt_dataset(te_dataset)
-    te_cl_loader = DataLoader(
+    te_cl_loader = src.loader.CLLoader(
         dataset=te_dataset,
+        aug='none' if config.TestTimeTuning.aug in ['dropout', 'featM'] else config.TestTimeTuning.aug,
+        aug_ratio=config.TestTimeTuning.aug_ratio,
+        num_augs=config.TestTimeTuning.num_augmentations,
         batch_size=config.Tuning.batch_size,
         shuffle=False,
         num_workers=2,
