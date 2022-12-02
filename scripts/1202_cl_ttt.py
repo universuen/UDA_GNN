@@ -18,7 +18,7 @@ if __name__ == '__main__':
     config.TestTimeTuning.aug_ratio = 0.5
     config.TestTimeTuning.num_iterations = 1
     config.TestTimeTuning.num_augmentations = 32
-    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / 'graphmae80_models_v2')
+    config.TestTimeTuning.presaved_model_path = str(config.Paths.models / '1116_test_ttt')
     # config.OneSampleBN.is_enabled = True
     # config.OneSampleBN.strength = 8
     if DEBUG:
