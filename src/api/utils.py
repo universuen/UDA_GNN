@@ -907,13 +907,6 @@ def tune_and_save_models(gnn):
 
 
 def cl_presaved_models(gnn):
-    if config.TestTimeTuning.add_prompts:
-        gnn.node_prompts = nn.ModuleList(
-            [
-                src.model.NodePrompt(enable_ssf=config.SSF.is_enabled).to(config.device)
-                for _ in range(config.GNN.num_layer)
-            ]
-        )
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
@@ -936,13 +929,6 @@ def cl_presaved_models(gnn):
         num_workers=2,
         pin_memory=True,
     )
-    # set up classifier, optimizer, and criterion
-    clf = src.model.GraphClf(
-        gnn=gnn,
-        dataset=config.TuningDataset.dataset,
-        use_graph_trans=config.Pretraining.use_graph_trans,
-    ).to(config.device)
-
     # prepare to record evaluations
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
     te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
@@ -957,6 +943,19 @@ def cl_presaved_models(gnn):
             input()
             break
 
+        if config.TestTimeTuning.add_prompts:
+            gnn.node_prompts = nn.ModuleList(
+                [
+                    src.model.NodePrompt(enable_ssf=config.SSF.is_enabled).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
+            )
+        clf = src.model.GraphClf(
+            gnn=gnn,
+            dataset=config.TuningDataset.dataset,
+            use_graph_trans=config.Pretraining.use_graph_trans,
+        ).to(config.device)
+        
         clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
         te_auc_history.append(eval_chem(clf, te_loader))
         if config.SSF.is_enabled:
