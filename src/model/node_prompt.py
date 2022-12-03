@@ -15,9 +15,9 @@ class NodePrompt(nn.Module):
         self.b = torch.nn.Parameter(
             torch.randn(1, size)
         )
+        self.init_weights()
         self.fixed_value = self.value.detach().clone()
         self.fixed_b = self.b.detach().clone()
-        self.init_weights()
         self.mode = mode
 
     def init_weights(self):
