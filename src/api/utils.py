@@ -322,7 +322,7 @@ def marginal_entropy_bce_batch(outputs, N):
     zeros = torch.zeros_like(outputs)
     outputs = torch.stack((outputs, zeros), dim=-1)  # shape = [B * N, C, 2]
     logits = outputs - outputs.logsumexp(dim=-1, keepdim=True)  # shape = [B * N, C, 2]
-    logits = logits.reshape(-1, N, C, 2) # shape = [B, N, C, 2]
+    logits = logits.reshape(-1, N, C, 2)  # shape = [B, N, C, 2]
     avg_logits = logits.logsumexp(dim=1) - np.log(N)  # shape = [B, C, 2]
     min_real = torch.finfo(avg_logits.dtype).min
     avg_logits = torch.clamp(avg_logits, min=min_real)
@@ -335,10 +335,12 @@ def freeze_bn(model):
         if isinstance(module, nn.BatchNorm1d) or isinstance(module, nn.BatchNorm2d):
             module.eval()
 
+
 def freeze_dropout(model):
     for module in model.modules():
         if isinstance(module, nn.Dropout):
             module.eval()
+
 
 def ttt_eval(clf_model, loader):
     set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
@@ -411,6 +413,74 @@ def ttt_eval(clf_model, loader):
     mean_roc = _evaluate(y_true, y_scores)
     mean_aug_roc = _evaluate(y_true, y_aug_scores)
     set_bn_prior(1)
+    return mean_roc, mean_aug_roc
+
+
+def cl_ssf_eval(clf_model, loader):
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+
+    ss_parameters = list(clf_model.linear.parameters())
+    for i in clf_model.modules():
+        if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
+            ss_parameters.append(i.gamma)
+            ss_parameters.append(i.beta)
+    if config.Tuning.use_node_prompt:
+        for prompt in clf_model.gnn.node_prompts:
+            ss_parameters += list(prompt.parameters())
+    optimizer = torch.optim.Adam(
+        params=ss_parameters,
+        lr=config.Tuning.lr,
+    )
+    y_true = []
+    y_scores = []
+    y_aug_scores = []
+    for data, augmentations in loader:
+        clf_model.train()
+        if config.TestTimeTuning.aug != 'dropout':
+            freeze_dropout(clf_model)
+
+        data.to(config.device)
+        augmentations.to(config.device)
+        # adapt
+        aug_pre_list = []
+        for _ in range(config.TestTimeTuning.num_iterations):
+            optimizer.zero_grad()
+            outputs = clf_model(augmentations)
+            loss, aug_pre = marginal_entropy_bce_batch(outputs, config.TestTimeTuning.num_augmentations)
+            loss.backward()
+            optimizer.step()
+            aug_pre_list.append(aug_pre)
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
+        # test
+        with torch.no_grad():
+            clf_model.eval()
+            pred = clf_model(data)
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
+
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+
     return mean_roc, mean_aug_roc
 
 
@@ -837,6 +907,13 @@ def tune_and_save_models(gnn):
 
 
 def cl_presaved_models(gnn):
+    if config.TestTimeTuning.add_prompts:
+        gnn.node_prompts = nn.ModuleList(
+            [
+                src.model.NodePrompt(enable_ssf=config.SSF.is_enabled).to(config.device)
+                for _ in range(config.GNN.num_layer)
+            ]
+        )
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
@@ -882,7 +959,10 @@ def cl_presaved_models(gnn):
 
         clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
         te_auc_history.append(eval_chem(clf, te_loader))
-        ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
+        if config.SSF.is_enabled:
+            ttt_auc, aug_auc = cl_ssf_eval(clf, te_cl_loader)
+        else:
+            ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
         te_ttt_auc_history.append(ttt_auc)
         te_aug_auc_history.append(aug_auc)
 
