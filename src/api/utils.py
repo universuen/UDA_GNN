@@ -955,13 +955,14 @@ def cl_presaved_models(gnn):
             dataset=config.TuningDataset.dataset,
             use_graph_trans=config.Pretraining.use_graph_trans,
         ).to(config.device)
-        
+
         clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
         te_auc_history.append(eval_chem(clf, te_loader))
-        if config.SSF.is_enabled:
-            ttt_auc, aug_auc = cl_ssf_eval(clf, te_cl_loader)
-        else:
-            ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
+        # if config.SSF.is_enabled:
+        #     ttt_auc, aug_auc = cl_ssf_eval(clf, te_cl_loader)
+        # else:
+        #     ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
+        ttt_auc, aug_auc = 0, 0
         te_ttt_auc_history.append(ttt_auc)
         te_aug_auc_history.append(aug_auc)
 
