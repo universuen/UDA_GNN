@@ -244,6 +244,10 @@ class SSF(_Config):
     is_enabled: bool = False
 
 
+class OnlineLearning(_Config):
+    enable_tent_bn: bool = False
+
+
 _all_items = vars().values()
 
 

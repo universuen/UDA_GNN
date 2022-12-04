@@ -907,6 +907,10 @@ def tune_and_save_models(gnn):
 
 
 def cl_presaved_models(gnn):
+    return ol_presaved_models(gnn)
+
+
+def ol_presaved_models(gnn):
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
@@ -944,6 +948,7 @@ def cl_presaved_models(gnn):
             input()
             break
         gnn.load_state_dict(gnn_states_backup, strict=False)
+
         if config.TestTimeTuning.add_prompts:
             gnn.node_prompts = nn.ModuleList(
                 [
@@ -958,6 +963,17 @@ def cl_presaved_models(gnn):
         ).to(config.device)
 
         clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
+
+        if config.OnlineLearning.enable_tent_bn:
+            for m in clf.modules():
+                if isinstance(m, nn.BatchNorm1d):
+                    m.requires_grad_(True)
+                    # force use of batch stats in train and eval modes
+                    m.track_running_stats = False
+                    m.running_mean = None
+                    m.running_var = None
+                    print(1)
+
         te_auc_history.append(eval_chem(clf, te_loader))
         if config.SSF.is_enabled:
             ttt_auc, aug_auc = cl_ssf_eval(clf, te_cl_loader)
