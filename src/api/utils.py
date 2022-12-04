@@ -972,7 +972,6 @@ def ol_presaved_models(gnn):
                     m.track_running_stats = False
                     m.running_mean = None
                     m.running_var = None
-                    print(1)
 
         te_auc_history.append(eval_chem(clf, te_loader))
         if config.SSF.is_enabled:
