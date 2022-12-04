@@ -437,6 +437,10 @@ def cl_ssf_eval(clf_model, loader):
         if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
             ss_parameters.append(i.gamma)
             ss_parameters.append(i.beta)
+        if config.OnlineLearning.optimize_tent_bn:
+            if isinstance(i, nn.BatchNorm1d):
+                ss_parameters.append(i.weight)
+                ss_parameters.append(i.bias)
     if config.Tuning.use_node_prompt:
         for prompt in clf_model.gnn.node_prompts:
             ss_parameters += list(prompt.parameters())

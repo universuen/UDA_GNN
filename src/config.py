@@ -246,6 +246,7 @@ class SSF(_Config):
 
 class OnlineLearning(_Config):
     enable_tent_bn: bool = False
+    optimize_tent_bn: bool = False
 
 
 _all_items = vars().values()
