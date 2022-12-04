@@ -935,6 +935,7 @@ def cl_presaved_models(gnn):
     te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
 
     logger.debug('Start loading models and evaluation.')
+    gnn_states_backup = copy.deepcopy(gnn.state_dict())
     for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
         model_path = Path(
             config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
@@ -942,7 +943,7 @@ def cl_presaved_models(gnn):
             logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
             input()
             break
-
+        gnn.load_state_dict(gnn_states_backup, strict=False)
         if config.TestTimeTuning.add_prompts:
             gnn.node_prompts = nn.ModuleList(
                 [
@@ -958,11 +959,10 @@ def cl_presaved_models(gnn):
 
         clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
         te_auc_history.append(eval_chem(clf, te_loader))
-        # if config.SSF.is_enabled:
-        #     ttt_auc, aug_auc = cl_ssf_eval(clf, te_cl_loader)
-        # else:
-        #     ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
-        ttt_auc, aug_auc = 0, 0
+        if config.SSF.is_enabled:
+            ttt_auc, aug_auc = cl_ssf_eval(clf, te_cl_loader)
+        else:
+            ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
         te_ttt_auc_history.append(ttt_auc)
         te_aug_auc_history.append(aug_auc)
 
