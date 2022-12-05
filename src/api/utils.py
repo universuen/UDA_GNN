@@ -402,8 +402,11 @@ def ttt_eval(clf_model, loader):
         y_scores.append(pred)
         y_aug_scores.append(aug_pre)
         # reset
-        clf_model.load_state_dict(clf_states)
-        optimizer.load_state_dict(optim_states)
+        if config.OnlineLearning.is_enabled:
+            pass
+        else:
+            clf_model.load_state_dict(clf_states)
+            optimizer.load_state_dict(optim_states)
 
     y_true = torch.cat(y_true, dim=0).cpu().numpy()
     y_scores = torch.cat(y_scores, dim=0).cpu().numpy()

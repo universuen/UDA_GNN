@@ -245,6 +245,7 @@ class SSF(_Config):
 
 
 class OnlineLearning(_Config):
+    is_enabled: bool = False
     enable_tent_bn: bool = False
     optimize_tent_bn: bool = False
 
