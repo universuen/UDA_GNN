@@ -115,7 +115,7 @@ def get_configured_tuning_dataset() -> types.Dataset:
     )
 
 
-def get_configured_ttt_dataset(test_dataset) -> types.Dataset:
+def get_configured_ttt_dataset(test_dataset) -> src.dataset.TTTAugDataset:
     if config.TestTimeTuning.aug in ['dropout', 'featM']:
         aug = 'none'
     else:

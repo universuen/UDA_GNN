@@ -927,6 +927,8 @@ def ol_presaved_models(gnn):
     tr_dataset, va_dataset, te_dataset = split_dataset(
         api.get_configured_tuning_dataset()
     )
+    if config.OnlineLearning.use_shuffle:
+        te_dataset = te_dataset.shuffle()
     te_loader = get_eval_loader(te_dataset)
     # transform to TTT dataset
     # te_dataset = api.get_configured_ttt_dataset(te_dataset)
@@ -1022,6 +1024,8 @@ def test_time_tuning_presaved_models(gnn):
     te_loader = get_eval_loader(te_dataset)
     # transform to TTT dataset
     te_dataset = api.get_configured_ttt_dataset(te_dataset)
+    if config.OnlineLearning.use_shuffle:
+        te_dataset = te_dataset.shuffle()
     te_ttt_loader = DataLoader(
         dataset=te_dataset,
         batch_size=1,

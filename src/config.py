@@ -248,6 +248,7 @@ class OnlineLearning(_Config):
     is_enabled: bool = False
     enable_tent_bn: bool = False
     optimize_tent_bn: bool = False
+    use_shuffle: bool = False
 
 
 _all_items = vars().values()
