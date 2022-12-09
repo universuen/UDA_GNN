@@ -18,7 +18,6 @@ if __name__ == '__main__':
         'bace',
         'bbbp',
     ]
-
     config.config_name = CONFIG_NAME
     config.device = f'cuda:{DEVICE}'
     config.Encoder.drop_ratio = 0.5
@@ -30,6 +29,7 @@ if __name__ == '__main__':
     # config.OneSampleBN.is_enabled = True
     # config.OneSampleBN.strength = 8
     config.BatchRenormalization.is_enabled = True
+    config.OnlineLearning.use_shuffle = True
 
     if DEBUG:
         api.set_debug_mode()
@@ -49,7 +49,7 @@ if __name__ == '__main__':
             gnn = api.get_configured_gnn()
             if config.TestTimeTuning.aug == 'featM':
                 gnn.mask_ratio = config.TestTimeTuning.aug_ratio
-            api.test_time_tuning_presaved_models(gnn)
+            api.ol_presaved_models(gnn)
 
         api.analyze_results_by_ratio()
         api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
