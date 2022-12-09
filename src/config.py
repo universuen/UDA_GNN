@@ -8,8 +8,6 @@ from typing import Callable, Type
 import torch
 import numpy as np
 
-import src.dataset
-
 datasets = [
     "bbbp",
     "tox21",
@@ -250,6 +248,7 @@ class OnlineLearning(_Config):
     optimize_tent_bn: bool = False
     use_shuffle: bool = False
 
+
 class BatchRenormalization(_Config):
     is_enabled: bool = False
 
@@ -266,4 +265,3 @@ def get_all_configs() -> list[ConfigType]:
         except TypeError:
             pass
     return results
-

@@ -16,7 +16,7 @@ if __name__ == '__main__':
     config.datasets = [
         "clintox",
         'bace',
-        'bbbp'
+        'bbbp',
     ]
     config.config_name = CONFIG_NAME
     config.device = f'cuda:{DEVICE}'

@@ -182,16 +182,6 @@ def analyze_results(steps: list[int] = None):
 
 
 def analyze_results_by_ratio(ratios: list[int] = None):
-    config.datasets = [
-        "bbbp",
-        "tox21",
-        "toxcast",
-        "sider",
-        "clintox",
-        "muv",
-        "hiv",
-        "bace",
-    ]
 
     if ratios is None:
         ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -228,16 +218,6 @@ def analyze_results_by_ratio(ratios: list[int] = None):
 
 
 def analyze_ttt_results_by_ratio(ratios: list[int] = None, item_name: str = 'te_auc'):
-    config.datasets = [
-        "bbbp",
-        "tox21",
-        "toxcast",
-        "sider",
-        "clintox",
-        "muv",
-        "hiv",
-        "bace",
-    ]
 
     if ratios is None:
         ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]

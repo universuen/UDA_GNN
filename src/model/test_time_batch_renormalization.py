@@ -14,9 +14,9 @@ class TBR(nn.BatchNorm1d):
         mu_batch = torch.mean(batch.t(), dim=1).detach()
         theta_batch = torch.var(batch.t(), dim=1).detach()
         if self.mu_ema is None:
-            self.mu_ema = self.running_mean
+            self.mu_ema = mu_batch
         if self.theta_ema is None:
-            self.theta_ema = self.running_var
+            self.theta_ema = theta_batch
 
         # calculate result
         r = mu_batch / self.mu_ema
