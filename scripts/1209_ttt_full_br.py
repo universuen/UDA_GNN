@@ -53,4 +53,5 @@ if __name__ == '__main__':
                 gnn.mask_ratio = config.TestTimeTuning.aug_ratio
 
             api.test_time_tuning_presaved_models(gnn)
-    api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
+        api.analyze_results_by_ratio()
+        api.analyze_ttt_results_by_ratio(item_name='te_ttt_auc')
