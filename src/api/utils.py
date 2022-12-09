@@ -1013,11 +1013,7 @@ def test_time_tuning_presaved_models(gnn):
         pin_memory=True,
     )
     # set up classifier, optimizer, and criterion
-    clf = src.model.GraphClf(
-        gnn=gnn,
-        dataset=config.TuningDataset.dataset,
-        use_graph_trans=config.Pretraining.use_graph_trans,
-    ).to(config.device)
+
 
     # optimizers
     # prepare to record evaluations
@@ -1033,7 +1029,11 @@ def test_time_tuning_presaved_models(gnn):
             logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
             input()
             break
-
+        clf = src.model.GraphClf(
+            gnn=gnn,
+            dataset=config.TuningDataset.dataset,
+            use_graph_trans=config.Pretraining.use_graph_trans,
+        ).to(config.device)
         clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         te_auc_history.append(eval_chem(clf, te_loader))
         if config.SSF.is_enabled:

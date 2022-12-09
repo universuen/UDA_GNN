@@ -27,8 +27,8 @@ if __name__ == '__main__':
     config.TestTimeTuning.num_iterations = 1
     config.TestTimeTuning.num_augmentations = 32
     config.TestTimeTuning.presaved_model_path = str(config.Paths.models / '1116_test_ttt')
-    config.OneSampleBN.is_enabled = True
-    config.OneSampleBN.strength = 8
+    # config.OneSampleBN.is_enabled = True
+    # config.OneSampleBN.strength = 8
     config.BatchRenormalization.is_enabled = True
 
     if DEBUG:
