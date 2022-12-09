@@ -5,3 +5,4 @@ from src.model.edge_prompt import EdgePrompt
 from src.model.one_sample_bn import OneSampleBN
 from src.model.scale_shift_linear import SSLinear
 from src.model.ss_batch_norm import SSBatchNorm
+from src.model.test_time_batch_renormalization import TBR

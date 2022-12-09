@@ -25,7 +25,7 @@ if __name__ == '__main__':
     config.OneSampleBN.strength = 8
 
     # newly added
-    config.OnlineLearning.is_enabled = True
+    # config.OnlineLearning.is_enabled = True
     config.datasets = [
         'bbbp',
         'hiv',

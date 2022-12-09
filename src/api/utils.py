@@ -1084,3 +1084,7 @@ def test_time_tuning_presaved_models(gnn):
 
 def get_current_filename(file) -> str:
     return Path(file).name.split('.')[0]
+
+
+def use_tbr_bn():
+    src.model.TBR.replace_bn()
