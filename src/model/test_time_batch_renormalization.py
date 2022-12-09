@@ -14,9 +14,9 @@ class TBR(nn.BatchNorm1d):
         mu_batch = torch.mean(batch.t(), dim=1).detach()
         theta_batch = torch.var(batch.t(), dim=1).detach()
         if self.mu_ema is None:
-            self.mu_ema = mu_batch
+            self.mu_ema = self.running_mean
         if self.theta_ema is None:
-            self.theta_ema = theta_batch
+            self.theta_ema = self.running_var
 
         # calculate result
         r = mu_batch / self.mu_ema
@@ -25,17 +25,15 @@ class TBR(nn.BatchNorm1d):
         batch = self.weight * batch + self.bias
 
         # update statistics
-        def update(x, y):
-            return self.alpha * x + (1 - self.alpha) * y
+        if self.training and self.track_running_stats:
+            def update(x, y):
+                return self.alpha * x + (1 - self.alpha) * y
 
-        self.mu_ema = update(self.mu_ema, mu_batch)
-        self.theta_ema = update(self.theta_ema, theta_batch)
+            self.mu_ema = update(self.mu_ema, mu_batch)
+            self.theta_ema = update(self.theta_ema, theta_batch)
 
         return batch
 
     @classmethod
     def replace_bn(cls):
         nn.BatchNorm1d = cls
-
-
-

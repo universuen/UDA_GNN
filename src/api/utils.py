@@ -507,7 +507,6 @@ def cl_eval(clf_model, loader):
         mean_roc = sum(roc_list) / len(roc_list)
         return mean_roc
 
-    clf_model.eval()
     optimizer = torch.optim.Adam(
         params=clf_model.parameters(),
         lr=config.Tuning.lr,

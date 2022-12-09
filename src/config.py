@@ -250,6 +250,9 @@ class OnlineLearning(_Config):
     optimize_tent_bn: bool = False
     use_shuffle: bool = False
 
+class BatchRenormalization(_Config):
+    is_enabled: bool = False
+
 
 _all_items = vars().values()
 
@@ -263,3 +266,4 @@ def get_all_configs() -> list[ConfigType]:
         except TypeError:
             pass
     return results
+
