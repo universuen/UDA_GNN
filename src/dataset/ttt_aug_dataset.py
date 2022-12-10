@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import torch
 from torch_geometric.data import Batch
 
 from src.original.trans_bt.loader import augment
@@ -31,3 +32,7 @@ class TTTAugDataset(Dataset):
         ]
         augmented_data = Batch.from_data_list(augmented_data)
         return data, augmented_data
+
+    def shuffle(self):
+        self.dataset = self.dataset.shuffle()
+        return self

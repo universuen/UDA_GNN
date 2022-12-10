@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as functional
+import torch.nn as nn
 import random
 from src.original.trans_bt.gnn_model import GNN as _GNN
 from src.model.gnn import GNNModel
@@ -22,6 +23,7 @@ class GNN(_GNN, GNNModel):
         self.node_prompts = None
         self.edge_prompt = None
         self.mask_ratio = 0
+        self.dropout = nn.Dropout(drop_ratio)
 
     def forward(self, *argv):
         if len(argv) == 3:
@@ -49,9 +51,9 @@ class GNN(_GNN, GNNModel):
             h = self.batch_norms[layer](h)
             if layer == self.num_layer - 1:
                 # remove relu for the last layer
-                h = functional.dropout(h, self.drop_ratio, training=self.training)
+                h = self.dropout(h)
             else:
-                h = functional.dropout(functional.relu(h), self.drop_ratio, training=self.training)
+                h = self.dropout(functional.relu(h))
             h_list.append(h)
 
         node_representation = None

@@ -8,8 +8,6 @@ from typing import Callable, Type
 import torch
 import numpy as np
 
-import src.dataset
-
 datasets = [
     "bbbp",
     "tox21",
@@ -241,6 +239,17 @@ class OneSampleBN(_Config):
 
 
 class SSF(_Config):
+    is_enabled: bool = False
+
+
+class OnlineLearning(_Config):
+    is_enabled: bool = False
+    enable_tent_bn: bool = False
+    optimize_tent_bn: bool = False
+    use_shuffle: bool = False
+
+
+class BatchRenormalization(_Config):
     is_enabled: bool = False
 
 

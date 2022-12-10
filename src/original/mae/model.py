@@ -5,6 +5,7 @@ from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_poo
 import torch.nn.functional as F
 from torch_scatter import scatter_add
 from torch_geometric.nn.inits import glorot, zeros
+import torch.nn as nn
 
 num_atom_type = 120 #including the extra mask tokens
 num_chirality_tag = 3
@@ -262,6 +263,8 @@ class GNN(torch.nn.Module):
         for layer in range(num_layer):
             self.batch_norms.append(torch.nn.BatchNorm1d(emb_dim))
 
+        self.dropout = nn.Dropout(drop_ratio)
+
     #def forward(self, x, edge_index, edge_attr):
     def forward(self, *argv):
         if len(argv) == 3:
@@ -281,9 +284,9 @@ class GNN(torch.nn.Module):
             #h = F.dropout(F.relu(h), self.drop_ratio, training = self.training)
             if layer == self.num_layer - 1:
                 #remove relu for the last layer
-                h = F.dropout(h, self.drop_ratio, training = self.training)
+                h = self.dropout(h)
             else:
-                h = F.dropout(F.relu(h), self.drop_ratio, training = self.training)
+                h = self.dropout(F.relu(h))
             h_list.append(h)
 
         ### Different implementations of Jk-concat

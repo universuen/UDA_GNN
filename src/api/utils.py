@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
+import copy
 
 import torch
 import numpy as np
 import pandas as pd
+from torch_geometric.data import Batch
 from torch_geometric.loader import DataLoader
 from torch import nn
 from sklearn.metrics import roc_auc_score
 
 import src
-import copy
 from src.original.trans_bt.splitters import scaffold_split
 from src import config, api
-from pathlib import Path
+from src.original.trans_bt.loader import augment
 
 
 def replace_bn():
@@ -180,16 +182,6 @@ def analyze_results(steps: list[int] = None):
 
 
 def analyze_results_by_ratio(ratios: list[int] = None):
-    config.datasets = [
-        "bbbp",
-        "tox21",
-        "toxcast",
-        "sider",
-        "clintox",
-        "muv",
-        "hiv",
-        "bace",
-    ]
 
     if ratios is None:
         ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -226,16 +218,6 @@ def analyze_results_by_ratio(ratios: list[int] = None):
 
 
 def analyze_ttt_results_by_ratio(ratios: list[int] = None, item_name: str = 'te_auc'):
-    config.datasets = [
-        "bbbp",
-        "tox21",
-        "toxcast",
-        "sider",
-        "clintox",
-        "muv",
-        "hiv",
-        "bace",
-    ]
 
     if ratios is None:
         ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -357,9 +339,31 @@ def marginal_entropy_bce_v2(outputs):
     return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
 
 
+def marginal_entropy_bce_batch(outputs, N):
+    """
+    outputs: shape = [B * N, C]. N is the number of augmentations, C is the number of binary classes, B is the batch size
+    """
+    C = outputs.shape[-1]
+    zeros = torch.zeros_like(outputs)
+    outputs = torch.stack((outputs, zeros), dim=-1)  # shape = [B * N, C, 2]
+    logits = outputs - outputs.logsumexp(dim=-1, keepdim=True)  # shape = [B * N, C, 2]
+    logits = logits.reshape(-1, N, C, 2)  # shape = [B, N, C, 2]
+    avg_logits = logits.logsumexp(dim=1) - np.log(N)  # shape = [B, C, 2]
+    min_real = torch.finfo(avg_logits.dtype).min
+    avg_logits = torch.clamp(avg_logits, min=min_real)
+    avg_ps = avg_logits[:, :, 0].detach().reshape(-1, C).exp()
+    return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
+
+
 def freeze_bn(model):
     for module in model.modules():
         if isinstance(module, nn.BatchNorm1d) or isinstance(module, nn.BatchNorm2d):
+            module.eval()
+
+
+def freeze_dropout(model):
+    for module in model.modules():
+        if isinstance(module, nn.Dropout):
             module.eval()
 
 
@@ -423,8 +427,11 @@ def ttt_eval(clf_model, loader):
         y_scores.append(pred)
         y_aug_scores.append(aug_pre)
         # reset
-        clf_model.load_state_dict(clf_states)
-        optimizer.load_state_dict(optim_states)
+        if config.OnlineLearning.is_enabled:
+            pass
+        else:
+            clf_model.load_state_dict(clf_states)
+            optimizer.load_state_dict(optim_states)
 
     y_true = torch.cat(y_true, dim=0).cpu().numpy()
     y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
@@ -434,6 +441,139 @@ def ttt_eval(clf_model, loader):
     mean_roc = _evaluate(y_true, y_scores)
     mean_aug_roc = _evaluate(y_true, y_aug_scores)
     set_bn_prior(1)
+    return mean_roc, mean_aug_roc
+
+
+def cl_ssf_eval(clf_model, loader):
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+
+    ss_parameters = list(clf_model.linear.parameters())
+    for i in clf_model.modules():
+        if type(i) in [src.model.SSLinear, src.model.SSBatchNorm]:
+            ss_parameters.append(i.gamma)
+            ss_parameters.append(i.beta)
+        if config.OnlineLearning.optimize_tent_bn:
+            if isinstance(i, nn.BatchNorm1d):
+                ss_parameters.append(i.weight)
+                ss_parameters.append(i.bias)
+    if config.Tuning.use_node_prompt:
+        for prompt in clf_model.gnn.node_prompts:
+            ss_parameters += list(prompt.parameters())
+    optimizer = torch.optim.Adam(
+        params=ss_parameters,
+        lr=config.Tuning.lr,
+    )
+    y_true = []
+    y_scores = []
+    y_aug_scores = []
+    for data, augmentations in loader:
+        clf_model.train()
+        if config.TestTimeTuning.aug != 'dropout':
+            freeze_dropout(clf_model)
+
+        data.to(config.device)
+        augmentations.to(config.device)
+        # adapt
+        aug_pre_list = []
+        for _ in range(config.TestTimeTuning.num_iterations):
+            optimizer.zero_grad()
+            outputs = clf_model(augmentations)
+            loss, aug_pre = marginal_entropy_bce_batch(outputs, config.TestTimeTuning.num_augmentations)
+            loss.backward()
+            optimizer.step()
+            aug_pre_list.append(aug_pre)
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
+        # test
+        with torch.no_grad():
+            clf_model.eval()
+            pred = clf_model(data)
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
+
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+
+    return mean_roc, mean_aug_roc
+
+
+def cl_eval(clf_model, loader):
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+
+    optimizer = torch.optim.Adam(
+        params=clf_model.parameters(),
+        lr=config.Tuning.lr,
+    )
+
+    y_true = []
+    y_scores = []
+    y_aug_scores = []
+    for data, augmentations in loader:
+        clf_model.train()
+        if config.TestTimeTuning.aug != 'dropout':
+            freeze_dropout(clf_model)
+
+        data.to(config.device)
+        augmentations.to(config.device)
+        # adapt
+        aug_pre_list = []
+        for _ in range(config.TestTimeTuning.num_iterations):
+            optimizer.zero_grad()
+            outputs = clf_model(augmentations)
+            loss, aug_pre = marginal_entropy_bce_batch(outputs, config.TestTimeTuning.num_augmentations)
+            loss.backward()
+            optimizer.step()
+            aug_pre_list.append(aug_pre)
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
+        # test
+        with torch.no_grad():
+            clf_model.eval()
+            pred = clf_model(data)
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
+
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+
     return mean_roc, mean_aug_roc
 
 
@@ -797,6 +937,99 @@ def tune_and_save_models(gnn):
             )
 
 
+def cl_presaved_models(gnn):
+    return ol_presaved_models(gnn)
+
+
+def ol_presaved_models(gnn):
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Test Time Tuning')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    if config.OnlineLearning.use_shuffle:
+        te_dataset = te_dataset.shuffle()
+    te_loader = get_eval_loader(te_dataset)
+    # transform to TTT dataset
+    # te_dataset = api.get_configured_ttt_dataset(te_dataset)
+    te_cl_loader = src.loader.CLLoader(
+        dataset=te_dataset,
+        aug='none' if config.TestTimeTuning.aug in ['dropout', 'featM'] else config.TestTimeTuning.aug,
+        aug_ratio=config.TestTimeTuning.aug_ratio,
+        num_augs=config.TestTimeTuning.num_augmentations,
+        batch_size=config.Tuning.batch_size,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=True,
+    )
+    # prepare to record evaluations
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+    te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
+    te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
+
+    logger.debug('Start loading models and evaluation.')
+    gnn_states_backup = copy.deepcopy(gnn.state_dict())
+    for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
+        model_path = Path(
+            config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
+        if not model_path.exists():
+            logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
+            input()
+            break
+        gnn.load_state_dict(gnn_states_backup, strict=False)
+
+        if config.TestTimeTuning.add_prompts:
+            gnn.node_prompts = nn.ModuleList(
+                [
+                    src.model.NodePrompt(enable_ssf=config.SSF.is_enabled).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
+            )
+        clf = src.model.GraphClf(
+            gnn=gnn,
+            dataset=config.TuningDataset.dataset,
+            use_graph_trans=config.Pretraining.use_graph_trans,
+        ).to(config.device)
+
+        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
+
+        if config.OnlineLearning.enable_tent_bn:
+            for m in clf.modules():
+                if isinstance(m, nn.BatchNorm1d):
+                    m.requires_grad_(True)
+                    # force use of batch stats in train and eval modes
+                    m.track_running_stats = False
+                    m.running_mean = None
+                    m.running_var = None
+
+        te_auc_history.append(eval_chem(clf, te_loader))
+        if config.SSF.is_enabled:
+            ttt_auc, aug_auc = cl_ssf_eval(clf, te_cl_loader)
+        else:
+            ttt_auc, aug_auc = cl_eval(clf, te_cl_loader)
+        te_ttt_auc_history.append(ttt_auc)
+        te_aug_auc_history.append(aug_auc)
+
+        te_auc_history.save()
+        te_ttt_auc_history.save()
+        te_aug_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                te_auc=te_auc_history.last_one,
+                te_ttt_auc=te_ttt_auc_history.last_one,
+                ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one,
+                te_aug_auc=te_aug_auc_history.last_one,
+                aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
+            )
+        )
+
+
 def test_time_tuning_presaved_models(gnn):
     if config.TestTimeTuning.add_prompts:
         gnn.node_prompts = nn.ModuleList(
@@ -815,6 +1048,8 @@ def test_time_tuning_presaved_models(gnn):
     te_loader = get_eval_loader(te_dataset)
     # transform to TTT dataset
     te_dataset = api.get_configured_ttt_dataset(te_dataset)
+    if config.OnlineLearning.use_shuffle:
+        te_dataset = te_dataset.shuffle()
     te_ttt_loader = DataLoader(
         dataset=te_dataset,
         batch_size=1,
@@ -823,11 +1058,7 @@ def test_time_tuning_presaved_models(gnn):
         pin_memory=True,
     )
     # set up classifier, optimizer, and criterion
-    clf = src.model.GraphClf(
-        gnn=gnn,
-        dataset=config.TuningDataset.dataset,
-        use_graph_trans=config.Pretraining.use_graph_trans,
-    ).to(config.device)
+
 
     # optimizers
     # prepare to record evaluations
@@ -836,6 +1067,7 @@ def test_time_tuning_presaved_models(gnn):
     te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
 
     logger.debug('Start loading models and evaluation.')
+    gnn_states_backup = copy.deepcopy(gnn.state_dict())
     for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
         model_path = Path(
             config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
@@ -843,8 +1075,13 @@ def test_time_tuning_presaved_models(gnn):
             logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
             input()
             break
-
-        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
+        gnn.load_state_dict(gnn_states_backup, strict=False)
+        clf = src.model.GraphClf(
+            gnn=gnn,
+            dataset=config.TuningDataset.dataset,
+            use_graph_trans=config.Pretraining.use_graph_trans,
+        ).to(config.device)
+        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
         te_auc_history.append(eval_chem(clf, te_loader))
         if config.SSF.is_enabled:
             ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
@@ -873,3 +1110,7 @@ def test_time_tuning_presaved_models(gnn):
 
 def get_current_filename(file) -> str:
     return Path(file).name.split('.')[0]
+
+
+def use_tbr_bn():
+    src.model.TBR.replace_bn()

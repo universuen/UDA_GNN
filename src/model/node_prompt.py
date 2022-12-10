@@ -4,9 +4,10 @@ from torch_geometric.nn.inits import glorot
 
 
 class NodePrompt(nn.Module):
-    def __init__(self, size: int = 300, mode: str = 'add'):
+    def __init__(self, size: int = 300, mode: str = 'add', enable_ssf: bool = False):
         super().__init__()
         # the initial value can be modified later
+        self.enable_ssf = enable_ssf
         self.size = size
         self.value = torch.nn.Parameter(
             torch.randn(1, size)
@@ -15,6 +16,8 @@ class NodePrompt(nn.Module):
             torch.randn(1, size)
         )
         self.init_weights()
+        self.fixed_value = self.value.detach().clone()
+        self.fixed_b = self.b.detach().clone()
         self.mode = mode
 
     def init_weights(self):
@@ -33,7 +36,11 @@ class NodePrompt(nn.Module):
             raise ValueError
 
     def _add(self, x: torch.Tensor):
-        return x + self.value
+        self.fixed_value = self.fixed_value.to(self.value.device)
+        if self.enable_ssf:
+            return x + self.value - self.fixed_value
+        else:
+            return x + self.value
 
     def _mul(self, x: torch.Tensor):
         return x * self.value
