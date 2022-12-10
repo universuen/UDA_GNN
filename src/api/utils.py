@@ -298,6 +298,51 @@ def confidence_selection(outputs, ratio=0.5):
     return outputs
 
 
+@torch.no_grad()
+def confidence_selection_v2(outputs, ratio=0.5):
+    """
+    outputs: shape = [N, C]. N is the number of augmentations, C is the number of binary classes
+    """
+    outputs = outputs.detach()
+    N = outputs.shape[0]
+    ps = torch.sigmoid(outputs)  # shape = [N, C]
+    entropy = - (ps * ps.log() + (1 - ps) * (1 - ps).log())  # shape = [N, C]
+    _, idx = torch.topk(entropy, int(N * ratio), largest=False, dim=0) # shape = [k, C]
+    idx = idx.T # shape = [C, k]
+    mask = torch.zeros_like(outputs.T, dtype=torch.bool) # shape = [C, N]
+    mask.scatter_(1, idx, True)
+    mask = mask.T # shape = [N, C]
+    return mask
+
+
+def marginal_entropy_bce_v3(outputs, ratio=0.5):
+    """
+    outputs: shape = [N, C]. N is the number of augmentations, C is the number of binary classes
+    """
+    device = outputs.device
+    mask = None
+    if ratio < 1:
+        mask = confidence_selection_v2(outputs, ratio) # shape = [N, C]
+
+    ## calculating logits
+    zeros = torch.zeros_like(outputs)
+    outputs = torch.stack((outputs, zeros), dim=-1)  # shape = [N, C, 2]
+    logits = outputs - outputs.logsumexp(dim=-1, keepdim=True)  # shape = [N, C, 2]
+
+    if mask is not None:
+        ## mask high entropy entries
+        logits = torch.where(mask.unsqueeze(-1), logits, torch.FloatTensor([float('-inf')]).to(device))
+        avg_logits = logits.logsumexp(dim=0) - mask.sum(0).unsqueeze(-1).log()  # shape = [C, 2]
+    else:
+        avg_logits = logits.logsumexp(dim=0) - np.log(logits.shape[0])  # shape = [C, 2]
+    
+    ## for numerical stability
+    min_real = torch.finfo(avg_logits.dtype).min
+    avg_logits = torch.clamp(avg_logits, min=min_real)
+    avg_ps = avg_logits[:, 0].detach().reshape(1, -1).exp() # shape = []
+    return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
+
+
 def marginal_entropy_bce_v2(outputs):
     """
     outputs: shape = [N, C]. N is the number of augmentations, C is the number of binary classes
