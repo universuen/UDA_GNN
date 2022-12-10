@@ -27,14 +27,7 @@ if __name__ == '__main__':
     config.Tuning.use_node_prompt = True
     config.TestTimeTuning.add_prompts = True
     config.Prompt.mode = 'add'
-
-    # DEBUG
-    config.datasets = [
-        "clintox",
-        'bace',
-        'bbbp',
-    ]
-    #################
+    config.Prompt.enable_ssf = True
 
     if DEBUG:
         api.set_debug_mode()

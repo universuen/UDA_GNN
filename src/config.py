@@ -222,6 +222,7 @@ class BarlowTwins(_Config):
 
 class Prompt(_Config):
     mode: str = 'add'
+    enable_ssf: bool = False
     assert mode in (
         'add',
         'mul',

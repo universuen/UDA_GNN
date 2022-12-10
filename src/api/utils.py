@@ -1034,7 +1034,10 @@ def test_time_tuning_presaved_models(gnn):
 
         if config.TestTimeTuning.add_prompts:
             gnn.node_prompts = nn.ModuleList(
-                [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]
+                [
+                    src.model.NodePrompt(enable_ssf=config.Prompt.enable_ssf or config.SSF.is_enabled).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
             )
 
         if config.AdvAug.is_enabled:
