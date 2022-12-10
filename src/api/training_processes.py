@@ -577,3 +577,112 @@ def train_mae(
                 models_dir / f'mae_{config.PretrainingDataset.dataset}_e{e + 1}_s{config.seed}.pt'
             )
     loss_history.save()
+
+
+def adv_eval(clf_model: src.model.GraphClf, loader):
+    assert config.AdvAug.is_enabled
+    assert config.Tuning.use_node_prompt
+
+    set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
+
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+
+    prompts_parameters = []
+    others_parameters = []
+    for i in clf_model.modules():
+        if type(i) == src.model.NodePrompt:
+            prompts_parameters += list(i.parameters())
+        else:
+            others_parameters += list(i.parameters())
+    others_parameters = set(others_parameters)
+    prompts_optimizer = torch.optim.SGD(
+        params=prompts_parameters,
+        lr=config.AdvAug.step_size,
+    )
+    others_optimizer = torch.optim.Adam(
+        params=others_parameters,
+        lr=config.Tuning.lr,
+    )
+    # back up
+    clf_states = copy.deepcopy(clf_model.state_dict())
+    prompts_optimizer_states = copy.deepcopy(prompts_optimizer.state_dict())
+    others_optimizer_states = copy.deepcopy(others_optimizer.state_dict())
+
+    y_true = []
+    y_scores = []
+    y_aug_scores = []
+    for data, augmentations in loader:
+
+        if config.TestTimeTuning.aug == 'dropout' or config.TestTimeTuning.aug == 'featM':
+            clf_model.train()
+            freeze_bn(clf_model)
+
+        data.to(config.device)
+        augmentations.to(config.device)
+
+        # adapt
+        aug_pre_list = []
+        for _ in range(config.TestTimeTuning.num_iterations):
+
+            others_loss = 0
+
+            # maximize loss by updating prompts
+            for __ in range(config.AdvAug.num_iterations):
+                # compute loss
+                outputs = clf_model(augmentations)
+                if config.TestTimeTuning.conf_ratio < 1:
+                    outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+                loss, aug_pre = marginal_entropy_bce_v2(outputs)
+
+                prompts_loss = -loss
+                prompts_loss.backward(retain_graph=True)
+                prompts_optimizer.step()
+                others_loss += loss
+
+                aug_pre_list.append(aug_pre)
+
+            # minimize loss by updating others
+            others_loss /= config.AdvAug.num_iterations
+            others_optimizer.zero_grad()
+            others_loss.backward()
+            others_optimizer.step()
+
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
+        # test
+        with torch.no_grad():
+            clf_model.eval()
+            pred = clf_model(data)
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
+        # reset
+        if config.OnlineLearning.is_enabled:
+            pass
+        else:
+            clf_model.load_state_dict(clf_states)
+            prompts_optimizer.load_state_dict(prompts_optimizer_states)
+            others_optimizer.load_state_dict(others_optimizer_states)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
+
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+    set_bn_prior(1)
+    return mean_roc, mean_aug_roc
