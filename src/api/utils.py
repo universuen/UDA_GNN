@@ -182,7 +182,6 @@ def analyze_results(steps: list[int] = None):
 
 
 def analyze_results_by_ratio(ratios: list[int] = None):
-
     if ratios is None:
         ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     results = {
@@ -218,7 +217,6 @@ def analyze_results_by_ratio(ratios: list[int] = None):
 
 
 def analyze_ttt_results_by_ratio(ratios: list[int] = None, item_name: str = 'te_auc'):
-
     if ratios is None:
         ratios = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     results = {
@@ -1195,11 +1193,6 @@ def ol_presaved_models_v2(gnn):
         )
 
 def test_time_tuning_presaved_models(gnn):
-    if config.TestTimeTuning.add_prompts:
-        gnn.node_prompts = nn.ModuleList(
-            [src.model.NodePrompt().to(config.device) for _ in range(config.GNN.num_layer)]
-        )
-
     dataset_name = config.TuningDataset.dataset
     logger = api.get_configured_logger(
         name=f'tune_{dataset_name}',
@@ -1223,7 +1216,6 @@ def test_time_tuning_presaved_models(gnn):
     )
     # set up classifier, optimizer, and criterion
 
-
     # optimizers
     # prepare to record evaluations
     te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
@@ -1239,20 +1231,33 @@ def test_time_tuning_presaved_models(gnn):
             logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
             input()
             break
+        gnn = api.get_configured_gnn()
         gnn.load_state_dict(gnn_states_backup, strict=False)
         clf = src.model.GraphClf(
             gnn=gnn,
             dataset=config.TuningDataset.dataset,
             use_graph_trans=config.Pretraining.use_graph_trans,
         ).to(config.device)
-        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
         te_auc_history.append(eval_chem(clf, te_loader))
-        if config.SSF.is_enabled:
+
+        if config.TestTimeTuning.add_prompts:
+            gnn.node_prompts = nn.ModuleList(
+                [
+                    src.model.NodePrompt(enable_ssf=config.Prompt.enable_ssf or config.SSF.is_enabled).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
+            )
+
+        if config.AdvAug.is_enabled:
+            ttt_auc, aug_auc = api.adv_eval(clf, te_ttt_loader)
+        elif config.SSF.is_enabled:
             ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
         elif config.TestTimeTuning.add_prompts:
             ttt_auc, aug_auc = ttt_prompt_eval(clf, te_ttt_loader)
         else:
             ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
+
         te_ttt_auc_history.append(ttt_auc)
         te_aug_auc_history.append(aug_auc)
 

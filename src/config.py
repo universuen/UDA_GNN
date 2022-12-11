@@ -223,6 +223,7 @@ class BarlowTwins(_Config):
 
 class Prompt(_Config):
     mode: str = 'add'
+    enable_ssf: bool = False
     assert mode in (
         'add',
         'mul',
@@ -252,6 +253,12 @@ class OnlineLearning(_Config):
 
 class BatchRenormalization(_Config):
     is_enabled: bool = False
+
+
+class AdvAug(_Config):
+    is_enabled: bool = False
+    num_iterations: int = 3
+    step_size: float = 8e-3
 
 
 _all_items = vars().values()
