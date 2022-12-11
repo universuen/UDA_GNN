@@ -92,6 +92,7 @@ class TestTimeTuning(_Config):
     presaved_model_path: Path | str = None
     add_prompts: bool = False
     include_linear: bool = False
+    tuning = True
 
     assert aug in (
         'dropN',
