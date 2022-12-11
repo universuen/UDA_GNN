@@ -38,9 +38,9 @@ class NodePrompt(nn.Module):
     def _add(self, x: torch.Tensor):
         self.fixed_value = self.fixed_value.to(self.value.device)
         if self.enable_ssf:
-            return x + self.value - self.fixed_value
+            return x + self.b - self.fixed_b
         else:
-            return x + self.value
+            return x + self.b
 
     def _mul(self, x: torch.Tensor):
         return x * self.value
