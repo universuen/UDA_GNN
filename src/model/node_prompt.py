@@ -60,6 +60,27 @@ class NodePrompt(nn.Module):
         return x * self.value + self.b
 
 
+class NodePromptPtb(nn.Module):
+    def __init__(
+            self,
+            size: int = 300,
+            uniform_init_interval: list[int, int] = None,
+            batch_size: int = 32,
+    ):
+        super().__init__()
+        self.b = torch.nn.Parameter(
+            torch.zeros(batch_size, size)
+        )
+        nn.init.uniform_(self.b, *uniform_init_interval)
+
+    def forward(self, x: torch.Tensor, batch: torch.Tensor):
+        '''
+        x: shape = [N, D]
+        batch: shape = [N]
+        '''
+        return x + self.b[batch]
+
+
 class NodePrompt_v2(nn.Module):
     def __init__(self, size: int = 300, mode: str = 'add', enable_ssf: bool = False):
         super().__init__()

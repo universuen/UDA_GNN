@@ -1242,15 +1242,26 @@ def test_time_tuning_presaved_models(gnn):
         te_auc_history.append(eval_chem(clf, te_loader))
 
         if config.TestTimeTuning.add_prompts:
-            gnn.node_prompts = nn.ModuleList(
-                [
-                    src.model.NodePrompt(
-                        enable_ssf=config.Prompt.enable_ssf or config.SSF.is_enabled,
-                        uniform_init_interval=config.Prompt.uniform_init_interval,
-                    ).to(config.device)
-                    for _ in range(config.GNN.num_layer)
-                ]
-            )
+            if config.AdvAug.is_enabled:
+                gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.NodePromptPtb(
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                            batch_size=config.TestTimeTuning.num_augmentations,
+                        ).to(config.device)
+                        for _ in range(config.GNN.num_layer)
+                    ]
+                )
+            else:
+                gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.NodePrompt(
+                            enable_ssf=config.Prompt.enable_ssf or config.SSF.is_enabled,
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                        ).to(config.device)
+                        for _ in range(config.GNN.num_layer)
+                    ]
+                )
 
         if config.AdvAug.is_enabled:
             ttt_auc, aug_auc = api.adv_eval(clf, te_ttt_loader)
