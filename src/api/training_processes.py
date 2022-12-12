@@ -641,7 +641,7 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
             for __ in range(config.AdvAug.num_iterations):
                 # calculate gradients
                 loss.backward()
-                # update prompts parameters by gradients sign
+                # update prompts parameters based on gradients sign
                 for i in clf_model.gnn.node_prompts:
                     for j in i.parameters():
                         if j.grad is None:
