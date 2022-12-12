@@ -4,18 +4,29 @@ from torch_geometric.nn.inits import glorot
 
 
 class NodePrompt(nn.Module):
-    def __init__(self, size: int = 300, mode: str = 'add', enable_ssf: bool = False):
+    def __init__(
+            self,
+            size: int = 300,
+            mode: str = 'add',
+            enable_ssf: bool = False,
+            uniform_init_interval: list[int, int] = None,
+    ):
         super().__init__()
-        # the initial value can be modified later
+
         self.enable_ssf = enable_ssf
         self.size = size
+
         self.value = torch.nn.Parameter(
             torch.randn(1, size)
         )
         self.b = torch.nn.Parameter(
             torch.randn(1, size)
         )
+
         self.init_weights()
+        if uniform_init_interval is not None:
+            nn.init.uniform_(self.b, *uniform_init_interval)
+
         self.fixed_value = self.value.detach().clone()
         self.fixed_b = self.b.detach().clone()
         self.mode = mode

@@ -600,25 +600,17 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
         mean_roc = sum(roc_list) / len(roc_list)
         return mean_roc
 
-    prompts_parameters = []
     others_parameters = []
     for i in clf_model.modules():
-        if type(i) == src.model.NodePrompt:
-            prompts_parameters += list(i.parameters())
-        else:
+        if type(i) != src.model.NodePrompt:
             others_parameters += list(i.parameters())
     others_parameters = set(others_parameters)
-    prompts_optimizer = torch.optim.SGD(
-        params=prompts_parameters,
-        lr=config.AdvAug.step_size,
-    )
     others_optimizer = torch.optim.Adam(
         params=others_parameters,
         lr=config.Tuning.lr,
     )
     # back up
     clf_states = copy.deepcopy(clf_model.state_dict())
-    prompts_optimizer_states = copy.deepcopy(prompts_optimizer.state_dict())
     others_optimizer_states = copy.deepcopy(others_optimizer.state_dict())
 
     y_true = []
@@ -637,27 +629,37 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
         aug_pre_list = []
         for _ in range(config.TestTimeTuning.num_iterations):
 
-            others_loss = 0
+            others_optimizer.zero_grad()
+            # calculate loss
+            outputs = clf_model(augmentations)
+            if config.TestTimeTuning.conf_ratio < 1:
+                outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+            loss, aug_pre = marginal_entropy_bce_v2(outputs)
+            loss /= config.AdvAug.step_size
 
             # maximize loss by updating prompts
             for __ in range(config.AdvAug.num_iterations):
-                # compute loss
+                # calculate gradients
+                loss.backward()
+                # update prompts parameters by gradients sign
+                for i in clf_model.gnn.node_prompts:
+                    for j in i.parameters():
+                        if j.grad is None:
+                            continue
+                        j_data = j.detach() + config.AdvAug.step_size * torch.sign(j.grad.detach())
+                        j.data = j_data.data
+                        j.grad[:] = 0
+                # calculate loss
                 outputs = clf_model(augmentations)
                 if config.TestTimeTuning.conf_ratio < 1:
                     outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
                 loss, aug_pre = marginal_entropy_bce_v2(outputs)
-
-                prompts_loss = -loss
-                prompts_loss.backward(retain_graph=True)
-                prompts_optimizer.step()
-                others_loss += loss
+                loss /= config.AdvAug.step_size
 
                 aug_pre_list.append(aug_pre)
 
             # minimize loss by updating others
-            others_loss /= config.AdvAug.num_iterations
-            others_optimizer.zero_grad()
-            others_loss.backward()
+            loss.backward()
             others_optimizer.step()
 
         aug_pre = sum(aug_pre_list) / len(aug_pre_list)
@@ -665,7 +667,13 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
         # test
         with torch.no_grad():
             clf_model.eval()
+            # remove prompts
+            prompts = clf_model.gnn.node_prompts
+            clf_model.gnn.node_prompts = None
+            # predict
             pred = clf_model(data)
+            # restore
+            clf_model.gnn.node_prompts = prompts
         y_true.append(data.y.view(pred.shape))
         y_scores.append(pred)
         y_aug_scores.append(aug_pre)
@@ -674,7 +682,6 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
             pass
         else:
             clf_model.load_state_dict(clf_states)
-            prompts_optimizer.load_state_dict(prompts_optimizer_states)
             others_optimizer.load_state_dict(others_optimizer_states)
 
     y_true = torch.cat(y_true, dim=0).cpu().numpy()
