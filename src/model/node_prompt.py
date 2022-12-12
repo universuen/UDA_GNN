@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import torch
 from torch import nn
-from torch_geometric.nn.inits import glorot
 
 
 class NodePrompt(nn.Module):
