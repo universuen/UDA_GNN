@@ -26,13 +26,13 @@ if __name__ == '__main__':
     config.Tuning.batch_size = 32
 
     
-    config.BatchRenormalization.is_enabled = True
+    config.BatchRenormalization.is_enabled = False
     config.SSF.is_enabled = False
     config.TestTimeTuning.tuning = True
     
     config.OneSampleBN.is_enabled = False
     config.OneSampleBN.strength = 4
-    
+    config.TestTimeTuning.add_prompts = True
 
     if config.OneSampleBN.is_enabled:
         api.replace_bn()
