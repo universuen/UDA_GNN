@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as functional
 import torch.nn as nn
 import random
+
+import src.model
 from src.original.trans_bt.gnn_model import GNN as _GNN
 from src.model.gnn import GNNModel
 
@@ -46,7 +48,10 @@ class GNN(_GNN, GNNModel):
         for layer in range(self.num_layer):
             h = h_list[layer]
             if self.node_prompts is not None:
-                h = self.node_prompts[layer](h)
+                if type(self.node_prompts[0]) == src.model.NodePromptPtb:
+                    h = self.node_prompts[layer](h, argv[0].batch)
+                else:
+                    h = self.node_prompts[layer](h)
             h = self.gnns[layer](h, edge_index, edge_attr, edge_prompt=self.edge_prompt)
             h = self.batch_norms[layer](h)
             if layer == self.num_layer - 1:

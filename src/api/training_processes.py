@@ -635,7 +635,7 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
             if config.TestTimeTuning.conf_ratio < 1:
                 outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
             loss, aug_pre = marginal_entropy_bce_v2(outputs)
-            loss /= config.AdvAug.step_size
+            loss /= config.AdvAug.num_iterations
 
             # maximize loss by updating prompts
             for __ in range(config.AdvAug.num_iterations):
@@ -654,7 +654,7 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
                 if config.TestTimeTuning.conf_ratio < 1:
                     outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
                 loss, aug_pre = marginal_entropy_bce_v2(outputs)
-                loss /= config.AdvAug.step_size
+                loss /= config.AdvAug.num_iterations
 
                 aug_pre_list.append(aug_pre)
 
