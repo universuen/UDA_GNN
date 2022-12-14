@@ -760,8 +760,8 @@ def flag_tune_and_save_models(gnn):
             is_valid = y ** 2 > 0  # shape = [N, C]
             loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
             loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
-            optimizer.zero_grad()
             loss = torch.sum(loss_mat) / torch.sum(is_valid)
+            loss /= config.AdvAug.num_iterations
 
             # maximize loss by updating prompts
             for _ in range(config.AdvAug.num_iterations):
@@ -770,8 +770,6 @@ def flag_tune_and_save_models(gnn):
                 # update prompts parameters based on gradients sign
                 for i in clf.gnn.node_prompts:
                     for j in i.parameters():
-                        if j.grad is None:
-                            continue
                         j_data = j.detach() + config.AdvAug.step_size * torch.sign(j.grad.detach())
                         j.data = j_data.data
                         j.grad[:] = 0
@@ -781,8 +779,8 @@ def flag_tune_and_save_models(gnn):
                 is_valid = y ** 2 > 0  # shape = [N, C]
                 loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
                 loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
-                optimizer.zero_grad()
                 loss = torch.sum(loss_mat) / torch.sum(is_valid)
+                loss /= config.AdvAug.num_iterations
 
             # minimize loss by updating others
             loss.backward()

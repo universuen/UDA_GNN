@@ -1,5 +1,5 @@
 from src.model.gnn._gnn_model import GNNModel
-from src.original.mae.model import GNN
+from src.model.gnn import GNN
 
 
 class Encoder(GNN, GNNModel):
@@ -13,7 +13,7 @@ class Encoder(GNN, GNNModel):
         super().__init__(
             num_layer=num_layer,
             emb_dim=emb_dim,
-            JK=jk,
+            jk=jk,
             drop_ratio=drop_ratio,
         )
         # remove self loop adding process
