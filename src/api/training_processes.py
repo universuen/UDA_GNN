@@ -738,20 +738,20 @@ def flag_tune_and_save_models(gnn):
 
     logger.debug('Training loop')
     for e in range(config.Tuning.epochs):
-        # add prompts
-        clf.gnn.node_prompts = nn.ModuleList(
-            [
-                src.model.NodePromptPtb(
-                    uniform_init_interval=[-config.AdvAug.step_size, config.AdvAug.step_size],
-                    batch_size=config.Tuning.batch_size,
-                ).to(config.device)
-                for _ in range(config.GNN.num_layer)
-            ]
-        )
-
         clf.train()
         for idx, batch in enumerate(training_loader):
             batch = batch.to(config.device)
+
+            # add prompts
+            clf.gnn.node_prompts = nn.ModuleList(
+                [
+                    src.model.NodePromptPtb(
+                        uniform_init_interval=[-config.AdvAug.step_size, config.AdvAug.step_size],
+                        batch_size=config.Tuning.batch_size,
+                    ).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
+            )
 
             optimizer.zero_grad()
             # calculate loss
@@ -788,8 +788,8 @@ def flag_tune_and_save_models(gnn):
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
 
-        # remove prompts
-        clf.gnn.node_prompts = None
+            # remove prompts
+            clf.gnn.node_prompts = None
 
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
