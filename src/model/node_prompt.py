@@ -10,7 +10,7 @@ class NodePrompt(nn.Module):
             size: int = 300,
             mode: str = 'add',
             enable_ssf: bool = False,
-            uniform_init_interval: list[int, int] = None,
+            uniform_init_interval: list[float, float] = None,
     ):
         super().__init__()
 
@@ -65,7 +65,7 @@ class NodePromptPtb(nn.Module):
     def __init__(
             self,
             size: int = 300,
-            uniform_init_interval: list[int, int] = None,
+            uniform_init_interval: list[float, float] = None,
             batch_size: int = 32,
     ):
         super().__init__()
