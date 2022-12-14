@@ -23,6 +23,7 @@ if __name__ == '__main__':
     config.AdvAug.is_enabled = True
     config.Tuning.use_node_prompt = True
     config.TestTimeTuning.add_prompts = True
+    config.Prompt.uniform_init_interval = [-config.AdvAug.step_size, config.AdvAug.step_size]
     if DEBUG:
         api.set_debug_mode()
 

@@ -746,7 +746,7 @@ def flag_tune_and_save_models(gnn):
             clf.gnn.node_prompts = nn.ModuleList(
                 [
                     src.model.NodePromptPtb(
-                        uniform_init_interval=[-config.AdvAug.step_size, config.AdvAug.step_size],
+                        uniform_init_interval=config.Prompt.uniform_init_interval,
                         batch_size=config.Tuning.batch_size,
                     ).to(config.device)
                     for _ in range(config.GNN.num_layer)

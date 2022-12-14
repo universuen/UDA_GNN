@@ -224,7 +224,7 @@ class BarlowTwins(_Config):
 class Prompt(_Config):
     mode: str = 'add'
     enable_ssf: bool = False
-    uniform_init_interval: list[int, int] = None
+    uniform_init_interval: list[float, float] = None
     assert mode in (
         'add',
         'mul',
