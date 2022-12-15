@@ -639,7 +639,7 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
             loss /= config.AdvAug.num_iterations
 
             # maximize loss by updating prompts
-            for __ in range(config.AdvAug.num_iterations):
+            for __ in range(config.AdvAug.num_iterations - 1):
                 # calculate gradients
                 loss.backward()
                 # update prompts parameters based on gradients sign
