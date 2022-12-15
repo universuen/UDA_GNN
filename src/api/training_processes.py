@@ -643,13 +643,12 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
                 # calculate gradients
                 loss.backward()
                 # update prompts parameters based on gradients sign
-                for i in clf_model.gnn.node_prompts:
-                    for j in i.parameters():
-                        if j.grad is None:
-                            continue
-                        j_data = j.detach() + config.AdvAug.step_size * torch.sign(j.grad.detach())
-                        j.data = j_data.data
-                        j.grad[:] = 0
+                for i in clf_model.gnn.node_prompts.parameters():
+                    if i.grad is None:
+                        continue
+                    i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                    i.data = i_data.data
+                    i.grad[:] = 0
                 # calculate loss
                 outputs = clf_model(augmentations)
                 if config.TestTimeTuning.conf_ratio < 1:
@@ -768,11 +767,10 @@ def flag_tune_and_save_models(gnn):
                 # calculate gradients
                 loss.backward()
                 # update prompts parameters based on gradients sign
-                for i in clf.gnn.node_prompts:
-                    for j in i.parameters():
-                        j_data = j.detach() + config.AdvAug.step_size * torch.sign(j.grad.detach())
-                        j.data = j_data.data
-                        j.grad[:] = 0
+                for i in clf.gnn.node_prompts.parameters():
+                    i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                    i.data = i_data.data
+                    i.grad[:] = 0
                 # calculate loss
                 pred = clf(batch)
                 y = batch.y.view(pred.shape).to(torch.float64)
@@ -878,30 +876,14 @@ def flag_tune_and_save_models_v2(gnn):
                 ]
             )
             # config prompts optimizer
-            prompts_parameters = []
-            for i in clf.gnn.node_prompts:
-                prompts_parameters += list(i.parameters())
             prompts_optimizer = torch.optim.Adam(
-                params=prompts_parameters,
+                params=clf.gnn.node_prompts.parameters(),
                 lr=config.AdvAug.step_size,
             )
 
-            optimizer.zero_grad()
-            # calculate loss
-            pred = clf(batch)
-            y = batch.y.view(pred.shape).to(torch.float64)
-            is_valid = y ** 2 > 0  # shape = [N, C]
-            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
-            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
-            loss = torch.sum(loss_mat) / torch.sum(is_valid)
-            loss /= config.AdvAug.num_iterations
-
+            total_loss = 0
             # maximize loss by updating prompts
             for _ in range(config.AdvAug.num_iterations - 1):
-                # calculate gradients
-                loss.backward()
-                # update prompts parameters based on gradients sign
-                prompts_optimizer.step()
                 # calculate loss
                 pred = clf(batch)
                 y = batch.y.view(pred.shape).to(torch.float64)
@@ -910,12 +892,18 @@ def flag_tune_and_save_models_v2(gnn):
                 loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
                 loss = torch.sum(loss_mat) / torch.sum(is_valid)
                 loss /= config.AdvAug.num_iterations
+                # update prompts parameters based on gradients sign
+                prompts_optimizer.zero_grad()
+                loss.backward(retain_graph=True)
+                prompts_optimizer.step()
+                total_loss += loss
 
             # minimize loss by updating others
-            loss.backward()
+            optimizer.zero_grad()
+            total_loss.backward()
             optimizer.step()
-            loss_history.append(loss)
-            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
+            loss_history.append(total_loss)
+            logger.debug(f'epoch: {e}, loss: {total_loss}, process: {(idx + 1) / len(training_loader)}')
 
             # remove prompts
             clf.gnn.node_prompts = None
