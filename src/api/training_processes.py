@@ -819,3 +819,132 @@ def flag_tune_and_save_models(gnn):
                 clf.state_dict(),
                 models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt'
             )
+
+
+def flag_tune_and_save_models_v2(gnn):
+    assert config.AdvAug.is_enabled
+    assert config.TestTimeTuning.add_prompts
+    assert config.Tuning.use_node_prompt
+
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Tuning')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    tr_loader = get_eval_loader(tr_dataset)
+    va_loader = get_eval_loader(va_dataset)
+    te_loader = get_eval_loader(te_dataset)
+    training_loader = api.get_configured_tuning_dataloader(tr_dataset)
+
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+    optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=optimizer,
+        step_size=30,
+        gamma=0.3,
+    )
+    criterion = nn.BCEWithLogitsLoss(reduction="none")
+    # prepare to record evaluations
+    loss_history = api.get_configured_history(f'{dataset_name}_tuning_losses_{config.seed}')
+    tr_auc_history = api.get_configured_history(f'{dataset_name}_tr_auc_{config.seed}')
+    va_auc_history = api.get_configured_history(f'{dataset_name}_va_auc_{config.seed}')
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+
+    models_dir = config.Paths.models / config.config_name
+    models_dir.mkdir(exist_ok=True)
+
+    logger.debug('Training loop')
+    for e in range(config.Tuning.epochs):
+        clf.train()
+        for idx, batch in enumerate(training_loader):
+            batch = batch.to(config.device)
+
+            # add prompts
+            clf.gnn.node_prompts = nn.ModuleList(
+                [
+                    src.model.NodePromptPtb(
+                        uniform_init_interval=config.Prompt.uniform_init_interval,
+                        batch_size=config.Tuning.batch_size,
+                    ).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
+            )
+            # config prompts optimizer
+            prompts_parameters = []
+            for i in clf.gnn.node_prompts:
+                prompts_parameters += list(i.parameters())
+            prompts_optimizer = torch.optim.Adam(
+                params=prompts_parameters,
+                lr=config.AdvAug.step_size,
+            )
+
+            optimizer.zero_grad()
+            # calculate loss
+            pred = clf(batch)
+            y = batch.y.view(pred.shape).to(torch.float64)
+            is_valid = y ** 2 > 0  # shape = [N, C]
+            loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
+            loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
+            loss = torch.sum(loss_mat) / torch.sum(is_valid)
+            loss /= config.AdvAug.num_iterations
+
+            # maximize loss by updating prompts
+            for _ in range(config.AdvAug.num_iterations - 1):
+                # calculate gradients
+                loss.backward()
+                # update prompts parameters based on gradients sign
+                prompts_optimizer.step()
+                # calculate loss
+                pred = clf(batch)
+                y = batch.y.view(pred.shape).to(torch.float64)
+                is_valid = y ** 2 > 0  # shape = [N, C]
+                loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
+                loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
+                loss = torch.sum(loss_mat) / torch.sum(is_valid)
+                loss /= config.AdvAug.num_iterations
+
+            # minimize loss by updating others
+            loss.backward()
+            optimizer.step()
+            loss_history.append(loss)
+            logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
+
+            # remove prompts
+            clf.gnn.node_prompts = None
+
+        tr_auc_history.append(eval_chem(clf, tr_loader))
+        va_auc_history.append(eval_chem(clf, va_loader))
+        te_auc_history.append(eval_chem(clf, te_loader))
+
+        tr_auc_history.save()
+        va_auc_history.save()
+        te_auc_history.save()
+        logger.info(
+            training_bar(
+                e,
+                config.Tuning.epochs,
+                loss=loss_history.last_one,
+                tr_auc=tr_auc_history.last_one,
+                va_auc=va_auc_history.last_one,
+                te_auc=te_auc_history.last_one,
+            )
+        )
+
+        if config.Tuning.use_lr_scheduler:
+            lr_scheduler.step()
+            logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
+
+        if (e + 1) % config.TestTimeTuning.save_epoch == 0:
+            logger.debug(f'Save the {e + 1} epoch model.')
+            torch.save(
+                clf.state_dict(),
+                models_dir / f'tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt'
+            )
