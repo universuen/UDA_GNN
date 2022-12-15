@@ -50,4 +50,4 @@ if __name__ == '__main__':
             encoder.load_state_dict(e_states)
             encoder.enable_selfloop()
             api.flag_tune_and_save_models_v2(encoder)
-    api.analyze_ttt_results_by_ratio(item_name='te_auc')
+        api.analyze_results_by_ratio()
