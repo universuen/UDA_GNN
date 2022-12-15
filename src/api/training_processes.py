@@ -764,7 +764,7 @@ def flag_tune_and_save_models(gnn):
             loss /= config.AdvAug.num_iterations
 
             # maximize loss by updating prompts
-            for _ in range(config.AdvAug.num_iterations):
+            for _ in range(config.AdvAug.num_iterations - 1):
                 # calculate gradients
                 loss.backward()
                 # update prompts parameters based on gradients sign
