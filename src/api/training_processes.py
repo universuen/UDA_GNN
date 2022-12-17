@@ -629,23 +629,22 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
         # adapt
         aug_pre_list = []
         for _ in range(config.TestTimeTuning.num_iterations):
-
-            others_optimizer.zero_grad()
             # calculate loss
+            others_optimizer.zero_grad()
             outputs = clf_model(augmentations)
             if config.TestTimeTuning.conf_ratio < 1:
                 outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+            t_loss = tent_loss(outputs) / config.AdvAug.num_iterations
+            m_loss = 0
             loss, aug_pre = marginal_entropy_bce_v2(outputs)
-            loss /= config.AdvAug.num_iterations
-
+            m_loss += loss / config.AdvAug.num_iterations
+            aug_pre_list.append(aug_pre)
             # maximize loss by updating prompts
             for __ in range(config.AdvAug.num_iterations - 1):
                 # calculate gradients
-                loss.backward()
+                t_loss.backward(retain_graph=True)
                 # update prompts parameters based on gradients sign
                 for i in clf_model.gnn.node_prompts.parameters():
-                    if i.grad is None:
-                        continue
                     i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
                     i.data = i_data.data
                     i.grad[:] = 0
@@ -653,13 +652,18 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
                 outputs = clf_model(augmentations)
                 if config.TestTimeTuning.conf_ratio < 1:
                     outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+                t_loss = tent_loss(outputs) / config.AdvAug.num_iterations
                 loss, aug_pre = marginal_entropy_bce_v2(outputs)
-                loss /= config.AdvAug.num_iterations
-
+                m_loss += loss / config.AdvAug.num_iterations
                 aug_pre_list.append(aug_pre)
 
-            # minimize loss by updating others
-            loss.backward()
+            t_loss.backward(retain_graph=True)
+            for i in clf_model.gnn.node_prompts.parameters():
+                i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                i.data = i_data.data
+                i.grad[:] = 0
+            others_optimizer.zero_grad()
+            m_loss.backward()
             others_optimizer.step()
 
         aug_pre = sum(aug_pre_list) / len(aug_pre_list)
@@ -883,7 +887,7 @@ def flag_tune_and_save_models_v2(gnn):
 
             total_loss = 0
             # maximize loss by updating prompts
-            for _ in range(config.AdvAug.num_iterations - 1):
+            for _ in range(config.AdvAug.num_iterations):
                 # calculate loss
                 pred = clf(batch)
                 y = batch.y.view(pred.shape).to(torch.float64)
