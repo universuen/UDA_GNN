@@ -287,11 +287,11 @@ def confidence_selection_v2(outputs, ratio=0.5):
     N = outputs.shape[0]
     ps = torch.sigmoid(outputs)  # shape = [N, C]
     entropy = - (ps * ps.log() + (1 - ps) * (1 - ps).log())  # shape = [N, C]
-    _, idx = torch.topk(entropy, int(N * ratio), largest=False, dim=0) # shape = [k, C]
-    idx = idx.T # shape = [C, k]
-    mask = torch.zeros_like(outputs.T, dtype=torch.bool) # shape = [C, N]
+    _, idx = torch.topk(entropy, int(N * ratio), largest=False, dim=0)  # shape = [k, C]
+    idx = idx.T  # shape = [C, k]
+    mask = torch.zeros_like(outputs.T, dtype=torch.bool)  # shape = [C, N]
     mask.scatter_(1, idx, True)
-    mask = mask.T # shape = [N, C]
+    mask = mask.T  # shape = [N, C]
     return mask
 
 
@@ -302,7 +302,7 @@ def marginal_entropy_bce_v3(outputs, ratio=0.5):
     device = outputs.device
     mask = None
     if ratio < 1:
-        mask = confidence_selection_v2(outputs, ratio) # shape = [N, C]
+        mask = confidence_selection_v2(outputs, ratio)  # shape = [N, C]
 
     ## calculating logits
     zeros = torch.zeros_like(outputs)
@@ -315,11 +315,11 @@ def marginal_entropy_bce_v3(outputs, ratio=0.5):
         avg_logits = logits.logsumexp(dim=0) - mask.sum(0).unsqueeze(-1).log()  # shape = [C, 2]
     else:
         avg_logits = logits.logsumexp(dim=0) - np.log(logits.shape[0])  # shape = [C, 2]
-    
+
     ## for numerical stability
     min_real = torch.finfo(avg_logits.dtype).min
     avg_logits = torch.clamp(avg_logits, min=min_real)
-    avg_ps = avg_logits[:, 0].detach().reshape(1, -1).exp() # shape = []
+    avg_ps = avg_logits[:, 0].detach().reshape(1, -1).exp()  # shape = []
     return -(avg_logits * torch.exp(avg_logits)).sum(dim=-1).mean(), avg_ps
 
 
@@ -359,7 +359,7 @@ def tent_loss(outputs):
     """
     zeros = torch.zeros_like(outputs)
     outputs = torch.stack((outputs, zeros), dim=-1)  # shape = [B, C, 2]
-    entropy = -(outputs.softmax(-1) * outputs.log_softmax(-1)).sum(-1) # shape = [B, C]
+    entropy = -(outputs.softmax(-1) * outputs.log_softmax(-1)).sum(-1)  # shape = [B, C]
     loss = entropy.mean()
     return loss
 
@@ -529,6 +529,7 @@ def cl_ssf_eval_v2(clf_model, loader):
     set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
     if config.BatchRenormalization.is_enabled:
         src.model.TBR.enable = True
+
     def _evaluate(y_true, y_scores):
         roc_list = []
         for i in range(y_true.shape[1]):
@@ -543,7 +544,7 @@ def cl_ssf_eval_v2(clf_model, loader):
             print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
         mean_roc = sum(roc_list) / len(roc_list)
         return mean_roc
-    
+
     ss_parameters = []
     # ss_parameters = list(clf_model.linear.parameters())
     for i in clf_model.modules():
@@ -560,12 +561,12 @@ def cl_ssf_eval_v2(clf_model, loader):
     )
     y_true = []
     y_scores = []
-    
+
     for data, augmentations in loader:
         optimizer.zero_grad()
         ## training
         clf_model.train()
-        
+
         data.to(config.device)
         augmentations.to(config.device)
         if True:
@@ -594,12 +595,12 @@ def cl_ssf_eval_v2(clf_model, loader):
     y_true = torch.cat(y_true, dim=0).cpu().numpy()
     y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
 
-
     mean_roc = _evaluate(y_true, y_scores)
     if config.BatchRenormalization.is_enabled:
         src.model.TBR.enable = False
     set_bn_prior(1)
     return mean_roc, 0
+
 
 def cl_eval(clf_model, loader):
     def _evaluate(y_true, y_scores):
@@ -1146,7 +1147,7 @@ def ol_presaved_models_v2(gnn):
 
     logger.debug('Start loading models and evaluation.')
     gnn_states_backup = copy.deepcopy(gnn.state_dict())
-    
+
     for e in range(9, config.Tuning.epochs + 1, config.TestTimeTuning.save_epoch):
         model_path = Path(
             config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e{e + 1}.pt')
@@ -1162,7 +1163,7 @@ def ol_presaved_models_v2(gnn):
                     for _ in range(config.GNN.num_layer)
                 ]
             )
-            
+
         clf = src.model.GraphClf(
             gnn=gnn,
             dataset=config.TuningDataset.dataset,
@@ -1171,9 +1172,9 @@ def ol_presaved_models_v2(gnn):
 
         clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
         te_auc_history.append(eval_chem(clf, te_loader))
-        
+
         ttt_auc, aug_auc = cl_ssf_eval_v2(clf, te_cl_loader)
-        
+
         te_ttt_auc_history.append(ttt_auc)
         te_aug_auc_history.append(aug_auc)
 
@@ -1191,6 +1192,7 @@ def ol_presaved_models_v2(gnn):
                 aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
             )
         )
+
 
 def test_time_tuning_presaved_models(gnn):
     dataset_name = config.TuningDataset.dataset
@@ -1289,6 +1291,104 @@ def test_time_tuning_presaved_models(gnn):
                 aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
             )
         )
+
+
+def test_time_tuning_presaved_models_only_last(gnn):
+    dataset_name = config.TuningDataset.dataset
+    logger = api.get_configured_logger(
+        name=f'tune_{dataset_name}',
+    )
+    log_all_config(logger)
+    logger.info('Started Test Time Tuning')
+    tr_dataset, va_dataset, te_dataset = split_dataset(
+        api.get_configured_tuning_dataset()
+    )
+    te_loader = get_eval_loader(te_dataset)
+    # transform to TTT dataset
+    te_dataset = api.get_configured_ttt_dataset(te_dataset)
+    if config.OnlineLearning.use_shuffle:
+        te_dataset = te_dataset.shuffle()
+    te_ttt_loader = DataLoader(
+        dataset=te_dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=2,
+        pin_memory=True,
+    )
+    # set up classifier, optimizer, and criterion
+
+    # optimizers
+    # prepare to record evaluations
+    te_auc_history = api.get_configured_history(f'{dataset_name}_te_auc_{config.seed}')
+    te_ttt_auc_history = api.get_configured_history(f'{dataset_name}_te_ttt_auc_{config.seed}')
+    te_aug_auc_history = api.get_configured_history(f'{dataset_name}_te_aug_auc_{config.seed}')
+
+    logger.debug('Start loading models and evaluation.')
+    gnn_states_backup = copy.deepcopy(gnn.state_dict())
+
+    model_path = Path(
+        config.TestTimeTuning.presaved_model_path + f'/tuning_model_{config.TuningDataset.dataset}_{config.seed}_e100.pt')
+    if not model_path.exists():
+        logger.info(f'{model_path} does not exists. Existing evaluation of seed {config.seed}')
+        exit()
+    gnn = api.get_configured_gnn()
+    gnn.load_state_dict(gnn_states_backup, strict=False)
+    clf = src.model.GraphClf(
+        gnn=gnn,
+        dataset=config.TuningDataset.dataset,
+        use_graph_trans=config.Pretraining.use_graph_trans,
+    ).to(config.device)
+    clf.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')), strict=False)
+    te_auc_history.append(eval_chem(clf, te_loader))
+
+    if config.TestTimeTuning.add_prompts:
+        if config.AdvAug.is_enabled:
+            gnn.node_prompts = nn.ModuleList(
+                [
+                    src.model.NodePromptPtb(
+                        uniform_init_interval=config.Prompt.uniform_init_interval,
+                        batch_size=config.TestTimeTuning.num_augmentations,
+                    ).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
+            )
+        else:
+            gnn.node_prompts = nn.ModuleList(
+                [
+                    src.model.NodePrompt(
+                        enable_ssf=config.Prompt.enable_ssf or config.SSF.is_enabled,
+                        uniform_init_interval=config.Prompt.uniform_init_interval,
+                    ).to(config.device)
+                    for _ in range(config.GNN.num_layer)
+                ]
+            )
+
+    if config.AdvAug.is_enabled:
+        ttt_auc, aug_auc = api.adv_eval(clf, te_ttt_loader)
+    elif config.SSF.is_enabled:
+        ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
+    elif config.TestTimeTuning.add_prompts:
+        ttt_auc, aug_auc = ttt_prompt_eval(clf, te_ttt_loader)
+    else:
+        ttt_auc, aug_auc = ttt_eval(clf, te_ttt_loader)
+
+    te_ttt_auc_history.append(ttt_auc)
+    te_aug_auc_history.append(aug_auc)
+
+    te_auc_history.save()
+    te_ttt_auc_history.save()
+    te_aug_auc_history.save()
+    logger.info(
+        training_bar(
+            99,
+            config.Tuning.epochs,
+            te_auc=te_auc_history.last_one,
+            te_ttt_auc=te_ttt_auc_history.last_one,
+            ttt_impr=te_ttt_auc_history.last_one - te_auc_history.last_one,
+            te_aug_auc=te_aug_auc_history.last_one,
+            aug_impr=te_aug_auc_history.last_one - te_auc_history.last_one,
+        )
+    )
 
 
 def get_current_filename(file) -> str:
