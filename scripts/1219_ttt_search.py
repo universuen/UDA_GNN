@@ -45,7 +45,6 @@ def search(lr_times: int):
             if config.TestTimeTuning.aug == 'featM':
                 gnn.mask_ratio = config.TestTimeTuning.aug_ratio
 
-            config.TestTimeTuning.save_epoch = 90
             api.test_time_tuning_presaved_models_only_last(gnn)
 
         api.analyze_results_by_ratio()
