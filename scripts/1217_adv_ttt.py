@@ -24,6 +24,7 @@ if __name__ == '__main__':
     config.OneSampleBN.is_enabled = True
     config.OneSampleBN.strength = 8
     config.AdvAug.is_enabled = True
+    config.AdvAug.num_iterations = 4
     config.Tuning.use_node_prompt = True
     config.TestTimeTuning.add_prompts = True
     config.Prompt.mode = 'add'
