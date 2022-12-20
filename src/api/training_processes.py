@@ -580,6 +580,135 @@ def train_mae(
     loss_history.save()
 
 
+def node_wise_adv_eval(clf_model: src.model.GraphClf, loader):
+    assert config.AdvAug.is_enabled
+    assert config.Tuning.use_node_prompt
+    # remove original prompts
+    clf_model.gnn.node_prompts = None
+
+    set_bn_prior(config.OneSampleBN.strength / (1 + config.OneSampleBN.strength))
+
+    def _evaluate(y_true, y_scores):
+        roc_list = []
+        for i in range(y_true.shape[1]):
+            # AUC is only defined when there is at least one positive data.
+            if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == -1) > 0:
+                is_valid = y_true[:, i] ** 2 > 0
+                roc_list.append(roc_auc_score(
+                    (y_true[is_valid, i] + 1) / 2, y_scores[is_valid, i]))
+
+        if len(roc_list) < y_true.shape[1]:
+            print("Some target is missing!")
+            print("Missing ratio: %f" % (1 - float(len(roc_list)) / y_true.shape[1]))
+        mean_roc = sum(roc_list) / len(roc_list)
+        return mean_roc
+
+    others_parameters = []
+    for i in clf_model.modules():
+        if type(i) != src.model.NodePromptPtb:
+            others_parameters += list(i.parameters())
+    others_parameters = set(others_parameters)
+    others_optimizer = torch.optim.Adam(
+        params=others_parameters,
+        lr=config.Tuning.lr,
+    )
+    # back up
+    clf_states = copy.deepcopy(clf_model.state_dict())
+    others_optimizer_states = copy.deepcopy(others_optimizer.state_dict())
+
+    y_true = []
+    y_scores = []
+    y_aug_scores = []
+    for data, augmentations in loader:
+
+        if config.TestTimeTuning.aug == 'dropout' or config.TestTimeTuning.aug == 'featM':
+            clf_model.train()
+            freeze_bn(clf_model)
+
+        data.to(config.device)
+        augmentations.to(config.device)
+
+        # adapt
+        aug_pre_list = []
+        # add prompts
+        clf_model.gnn.node_prompts = nn.ModuleList(
+            [
+                src.model.NodeWisePromptPtb(
+                    num_nodes=augmentations.x.shape[0],
+                    uniform_init_interval=config.Prompt.uniform_init_interval,
+                ).to(config.device)
+                for _ in range(config.Prompt.num)
+            ]
+        )
+
+        for _ in range(config.TestTimeTuning.num_iterations):
+            # calculate loss
+            others_optimizer.zero_grad()
+            outputs = clf_model(augmentations)
+            if config.TestTimeTuning.conf_ratio < 1:
+                outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+            t_loss = tent_loss(outputs) / config.AdvAug.num_iterations
+            m_loss = 0
+            loss, aug_pre = marginal_entropy_bce_v2(outputs)
+            m_loss += loss / config.AdvAug.num_iterations
+            aug_pre_list.append(aug_pre)
+            # maximize loss by updating prompts
+            for __ in range(config.AdvAug.num_iterations - 1):
+                # calculate gradients
+                t_loss.backward(retain_graph=True)
+                # update prompts parameters based on gradients sign
+                for i in clf_model.gnn.node_prompts.parameters():
+                    i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                    i.data = i_data.data
+                    i.grad[:] = 0
+                # calculate loss
+                outputs = clf_model(augmentations)
+                if config.TestTimeTuning.conf_ratio < 1:
+                    outputs = confidence_selection(outputs, config.TestTimeTuning.conf_ratio)
+                t_loss = tent_loss(outputs) / config.AdvAug.num_iterations
+                loss, aug_pre = marginal_entropy_bce_v2(outputs)
+                m_loss += loss / config.AdvAug.num_iterations
+                aug_pre_list.append(aug_pre)
+
+            t_loss.backward(retain_graph=True)
+            for i in clf_model.gnn.node_prompts.parameters():
+                i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                i.data = i_data.data
+                i.grad[:] = 0
+            others_optimizer.zero_grad()
+            m_loss.backward()
+            others_optimizer.step()
+
+        aug_pre = sum(aug_pre_list) / len(aug_pre_list)
+
+        # test
+        with torch.no_grad():
+            clf_model.eval()
+            # remove prompts
+            clf_model.gnn.node_prompts = None
+            # predict
+            pred = clf_model(data)
+        y_true.append(data.y.view(pred.shape))
+        y_scores.append(pred)
+        y_aug_scores.append(aug_pre)
+        # reset
+        if config.OnlineLearning.is_enabled:
+            pass
+        else:
+            clf_model.load_state_dict(clf_states)
+            others_optimizer.load_state_dict(others_optimizer_states)
+
+    y_true = torch.cat(y_true, dim=0).cpu().numpy()
+    y_scores = torch.cat(y_scores, dim=0).cpu().numpy()
+
+    y_aug_scores = torch.cat(y_aug_scores, dim=0).cpu().numpy()
+
+    mean_roc = _evaluate(y_true, y_scores)
+    mean_aug_roc = _evaluate(y_true, y_aug_scores)
+    set_bn_prior(1)
+    return mean_roc, mean_aug_roc
+
+
 def adv_eval(clf_model: src.model.GraphClf, loader):
     assert config.AdvAug.is_enabled
     assert config.Tuning.use_node_prompt

@@ -230,6 +230,8 @@ class Prompt(_Config):
         'mul',
         'mul_add',
     )
+    num: int = 5
+    use_node_wise_prompt: bool = False
 
 
 class Logger(_Config):

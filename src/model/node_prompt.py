@@ -82,6 +82,23 @@ class NodePromptPtb(nn.Module):
         return x + self.b[batch]
 
 
+class NodeWisePromptPtb(nn.Module):
+    def __init__(
+            self,
+            num_nodes: int,
+            size: int = 300,
+            uniform_init_interval: list[float, float] = None,
+    ):
+        super().__init__()
+        self.b = torch.nn.Parameter(
+            torch.zeros(num_nodes, size)
+        )
+        nn.init.uniform_(self.b, *uniform_init_interval)
+
+    def forward(self, x: torch.Tensor):
+        return x + self.b
+
+
 class NodePrompt_v2(nn.Module):
     def __init__(self, size: int = 300, mode: str = 'add', enable_ssf: bool = False):
         super().__init__()
@@ -121,7 +138,7 @@ class NodePrompt_v2(nn.Module):
             return self._batch_add(x)
         else:
             raise ValueError
-    
+
     def _batch_add(self, x):
         '''
         x: shape = [N, D]
@@ -129,7 +146,7 @@ class NodePrompt_v2(nn.Module):
         '''
         N = x.shape[0]
         if not hasattr(self, 'batch_b'):
-            batch_b = self.b.view(1, -1).repeat(N, 1) # shape = [N, D]
+            batch_b = self.b.view(1, -1).repeat(N, 1)  # shape = [N, D]
             batch_b.retain_grad()
             self.batch_b = batch_b
             self.batch_b2 = batch_b.detach().clone()
@@ -137,7 +154,7 @@ class NodePrompt_v2(nn.Module):
             batch_b = self.batch_b
         x = x + batch_b
         return x
-    
+
     def step(self, lr):
         self.batch_b = self.batch_b - lr * self.batch_b.grad
 

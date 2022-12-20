@@ -1251,7 +1251,7 @@ def test_time_tuning_presaved_models(gnn):
                             uniform_init_interval=config.Prompt.uniform_init_interval,
                             batch_size=config.TestTimeTuning.num_augmentations,
                         ).to(config.device)
-                        for _ in range(config.GNN.num_layer)
+                        for _ in range(config.Prompt.num)
                     ]
                 )
             else:
@@ -1261,11 +1261,13 @@ def test_time_tuning_presaved_models(gnn):
                             enable_ssf=config.Prompt.enable_ssf or config.SSF.is_enabled,
                             uniform_init_interval=config.Prompt.uniform_init_interval,
                         ).to(config.device)
-                        for _ in range(config.GNN.num_layer)
+                        for _ in range(config.Prompt.num)
                     ]
                 )
 
-        if config.AdvAug.is_enabled:
+        if config.Prompt.use_node_wise_prompt:
+            ttt_auc, aug_auc = api.node_wise_adv_eval(clf, te_ttt_loader)
+        elif config.AdvAug.is_enabled:
             ttt_auc, aug_auc = api.adv_eval(clf, te_ttt_loader)
         elif config.SSF.is_enabled:
             ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
@@ -1349,7 +1351,7 @@ def test_time_tuning_presaved_models_only_last(gnn):
                         uniform_init_interval=config.Prompt.uniform_init_interval,
                         batch_size=config.TestTimeTuning.num_augmentations,
                     ).to(config.device)
-                    for _ in range(config.GNN.num_layer)
+                    for _ in range(config.Prompt.num)
                 ]
             )
         else:
@@ -1359,11 +1361,13 @@ def test_time_tuning_presaved_models_only_last(gnn):
                         enable_ssf=config.Prompt.enable_ssf or config.SSF.is_enabled,
                         uniform_init_interval=config.Prompt.uniform_init_interval,
                     ).to(config.device)
-                    for _ in range(config.GNN.num_layer)
+                    for _ in range(config.Prompt.num)
                 ]
             )
 
-    if config.AdvAug.is_enabled:
+    if config.Prompt.use_node_wise_prompt:
+        ttt_auc, aug_auc = api.node_wise_adv_eval(clf, te_ttt_loader)
+    elif config.AdvAug.is_enabled:
         ttt_auc, aug_auc = api.adv_eval(clf, te_ttt_loader)
     elif config.SSF.is_enabled:
         ttt_auc, aug_auc = ttt_ssf_eval(clf, te_ttt_loader)
