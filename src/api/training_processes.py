@@ -605,7 +605,7 @@ def node_wise_adv_eval(clf_model: src.model.GraphClf, loader):
 
     others_parameters = []
     for i in clf_model.modules():
-        if type(i) != src.model.NodePromptPtb:
+        if type(i) != src.model.NodeWisePromptPtb:
             others_parameters += list(i.parameters())
     others_parameters = set(others_parameters)
     others_optimizer = torch.optim.Adam(
