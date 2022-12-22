@@ -855,7 +855,7 @@ def flag_tune_and_save_models(gnn):
     optimizer = torch.optim.Adam(clf.parameters(), config.Tuning.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer=optimizer,
-        step_size=30,
+        step_size=config.AdvAug.lr_scheduler_step_size,
         gamma=0.3,
     )
     criterion = nn.BCEWithLogitsLoss(reduction="none")
@@ -875,15 +875,26 @@ def flag_tune_and_save_models(gnn):
             batch = batch.to(config.device)
 
             # add prompts
-            clf.gnn.node_prompts = nn.ModuleList(
-                [
-                    src.model.NodePromptPtb(
-                        uniform_init_interval=config.Prompt.uniform_init_interval,
-                        batch_size=config.Tuning.batch_size,
-                    ).to(config.device)
-                    for _ in range(config.GNN.num_layer)
-                ]
-            )
+            if config.Prompt.use_node_wise_prompt:
+                clf.gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.NodeWisePromptPtb(
+                            num_nodes=batch.x.shape[0],
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                        ).to(config.device)
+                        for _ in range(config.Prompt.num)
+                    ]
+                )
+            else:
+                clf.gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.NodePromptPtb(
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                            batch_size=config.Tuning.batch_size,
+                        ).to(config.device)
+                        for _ in range(config.Prompt.num)
+                    ]
+                )
 
             optimizer.zero_grad()
             # calculate loss
@@ -940,7 +951,7 @@ def flag_tune_and_save_models(gnn):
             )
         )
 
-        if config.Tuning.use_lr_scheduler:
+        if config.Tuning.use_lr_scheduler or config.AdvAug.use_lr_scheduler:
             lr_scheduler.step()
             logger.info(f'current LR: {lr_scheduler.get_last_lr()[0]}')
 

@@ -262,6 +262,8 @@ class AdvAug(_Config):
     is_enabled: bool = False
     num_iterations: int = 3
     step_size: float = 8e-3
+    use_lr_scheduler: bool = False
+    lr_scheduler_step_size: int = 30
 
 
 _all_items = vars().values()
