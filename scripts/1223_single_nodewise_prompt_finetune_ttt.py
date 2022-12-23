@@ -74,6 +74,7 @@ if __name__ == '__main__':
     config.Prompt.mode = 'add'
     config.Prompt.uniform_init_interval = [-config.AdvAug.step_size, config.AdvAug.step_size]
     config.Prompt.num = 1
+    config.Prompt.use_node_wise_prompt = True
 
     if DEBUG:
         api.set_debug_mode()
