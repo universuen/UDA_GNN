@@ -49,7 +49,10 @@ class GNN(_GNN, GNNModel):
             h = h_list[layer]
             if self.node_prompts is not None:
                 try:
-                    if type(self.node_prompts[0]) == src.model.NodePromptPtb:
+                    if type(self.node_prompts[0]) in [
+                        src.model.NodePromptPtb,
+                        src.model.SSFPrompt,
+                    ]:
                         h = self.node_prompts[layer](h, argv[0].batch)
                     else:
                         h = self.node_prompts[layer](h)

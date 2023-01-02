@@ -1345,15 +1345,26 @@ def test_time_tuning_presaved_models_only_last(gnn):
 
     if config.TestTimeTuning.add_prompts:
         if config.AdvAug.is_enabled:
-            gnn.node_prompts = nn.ModuleList(
-                [
-                    src.model.NodePromptPtb(
-                        uniform_init_interval=config.Prompt.uniform_init_interval,
-                        batch_size=config.TestTimeTuning.num_augmentations,
-                    ).to(config.device)
-                    for _ in range(config.Prompt.num)
-                ]
-            )
+            if config.Prompt.use_ssf_prompt:
+                clf.gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.SSFPrompt(
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                            batch_size=config.Tuning.batch_size,
+                        ).to(config.device)
+                        for _ in range(config.Prompt.num)
+                    ]
+                )
+            else:
+                clf.gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.NodePromptPtb(
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                            batch_size=config.Tuning.batch_size,
+                        ).to(config.device)
+                        for _ in range(config.Prompt.num)
+                    ]
+                )
         else:
             gnn.node_prompts = nn.ModuleList(
                 [

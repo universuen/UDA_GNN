@@ -232,6 +232,7 @@ class Prompt(_Config):
     )
     num: int = 5
     use_node_wise_prompt: bool = False
+    use_ssf_prompt: bool = False
 
 
 class Logger(_Config):
@@ -264,6 +265,12 @@ class AdvAug(_Config):
     step_size: float = 8e-3
     use_lr_scheduler: bool = False
     lr_scheduler_step_size: int = 30
+    w_updating_strategy: str = 'sign'
+
+    assert w_updating_strategy in [
+        'sign',
+        'grad',
+    ]
 
 
 _all_items = vars().values()

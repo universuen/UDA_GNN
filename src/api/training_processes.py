@@ -773,10 +773,21 @@ def adv_eval(clf_model: src.model.GraphClf, loader):
                 # calculate gradients
                 t_loss.backward(retain_graph=True)
                 # update prompts parameters based on gradients sign
-                for i in clf_model.gnn.node_prompts.parameters():
-                    i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
-                    i.data = i_data.data
-                    i.grad[:] = 0
+                if config.Prompt.use_ssf_prompt and config.AdvAug.w_updating_strategy == 'grad':
+                    for name, para in clf_model.gnn.node_prompts.named_parameters():
+                        if name[-1] == 'w':
+                            para_data = para.detach() + config.AdvAug.step_size * para.grad.detach()
+                        elif name[-1] == 'b':
+                            para_data = para.detach() + config.AdvAug.step_size * torch.sign(para.grad.detach())
+                        else:
+                            raise ValueError
+                        para.data = para_data.data
+                        para.grad[:] = 0
+                else:
+                    for i in clf_model.gnn.node_prompts.parameters():
+                        i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                        i.data = i_data.data
+                        i.grad[:] = 0
                 # calculate loss
                 outputs = clf_model(augmentations)
                 if config.TestTimeTuning.conf_ratio < 1:
@@ -885,6 +896,16 @@ def flag_tune_and_save_models(gnn):
                         for _ in range(config.Prompt.num)
                     ]
                 )
+            elif config.Prompt.use_ssf_prompt:
+                clf.gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.SSFPrompt(
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                            batch_size=config.Tuning.batch_size,
+                        ).to(config.device)
+                        for _ in range(config.Prompt.num)
+                    ]
+                )
             else:
                 clf.gnn.node_prompts = nn.ModuleList(
                     [
@@ -911,10 +932,21 @@ def flag_tune_and_save_models(gnn):
                 # calculate gradients
                 loss.backward()
                 # update prompts parameters based on gradients sign
-                for i in clf.gnn.node_prompts.parameters():
-                    i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
-                    i.data = i_data.data
-                    i.grad[:] = 0
+                if config.Prompt.use_ssf_prompt and config.AdvAug.w_updating_strategy  == 'grad':
+                    for name, para in clf.gnn.node_prompts.named_parameters():
+                        if name[-1] == 'w':
+                            para_data = para.detach() + config.AdvAug.step_size * para.grad.detach()
+                        elif name[-1] == 'b':
+                            para_data = para.detach() + config.AdvAug.step_size * torch.sign(para.grad.detach())
+                        else:
+                            raise ValueError
+                        para.data = para_data.data
+                        para.grad[:] = 0
+                else:
+                    for i in clf.gnn.node_prompts.parameters():
+                        i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                        i.data = i_data.data
+                        i.grad[:] = 0
                 # calculate loss
                 pred = clf(batch)
                 y = batch.y.view(pred.shape).to(torch.float64)
