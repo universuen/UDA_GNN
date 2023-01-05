@@ -266,7 +266,6 @@ class AdvAug(_Config):
     use_lr_scheduler: bool = False
     lr_scheduler_step_size: int = 30
     w_updating_strategy: str = 'sign'
-    keep_prompts: bool = False
 
     assert w_updating_strategy in [
         'sign',
