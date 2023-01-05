@@ -886,36 +886,37 @@ def flag_tune_and_save_models(gnn):
             batch = batch.to(config.device)
 
             # add prompts
-            if config.Prompt.use_node_wise_prompt:
-                clf.gnn.node_prompts = nn.ModuleList(
-                    [
-                        src.model.NodeWisePromptPtb(
-                            num_nodes=batch.x.shape[0],
-                            uniform_init_interval=config.Prompt.uniform_init_interval,
-                        ).to(config.device)
-                        for _ in range(config.Prompt.num)
-                    ]
-                )
-            elif config.Prompt.use_ssf_prompt:
-                clf.gnn.node_prompts = nn.ModuleList(
-                    [
-                        src.model.SSFPrompt(
-                            uniform_init_interval=config.Prompt.uniform_init_interval,
-                            batch_size=config.Tuning.batch_size,
-                        ).to(config.device)
-                        for _ in range(config.Prompt.num)
-                    ]
-                )
-            else:
-                clf.gnn.node_prompts = nn.ModuleList(
-                    [
-                        src.model.NodePromptPtb(
-                            uniform_init_interval=config.Prompt.uniform_init_interval,
-                            batch_size=config.Tuning.batch_size,
-                        ).to(config.device)
-                        for _ in range(config.Prompt.num)
-                    ]
-                )
+            if clf.gnn.node_prompts is None:
+                if config.Prompt.use_node_wise_prompt:
+                    clf.gnn.node_prompts = nn.ModuleList(
+                        [
+                            src.model.NodeWisePromptPtb(
+                                num_nodes=batch.x.shape[0],
+                                uniform_init_interval=config.Prompt.uniform_init_interval,
+                            ).to(config.device)
+                            for _ in range(config.Prompt.num)
+                        ]
+                    )
+                elif config.Prompt.use_ssf_prompt:
+                    clf.gnn.node_prompts = nn.ModuleList(
+                        [
+                            src.model.SSFPrompt(
+                                uniform_init_interval=config.Prompt.uniform_init_interval,
+                                batch_size=config.Tuning.batch_size,
+                            ).to(config.device)
+                            for _ in range(config.Prompt.num)
+                        ]
+                    )
+                else:
+                    clf.gnn.node_prompts = nn.ModuleList(
+                        [
+                            src.model.NodePromptPtb(
+                                uniform_init_interval=config.Prompt.uniform_init_interval,
+                                batch_size=config.Tuning.batch_size,
+                            ).to(config.device)
+                            for _ in range(config.Prompt.num)
+                        ]
+                    )
 
             optimizer.zero_grad()
             # calculate loss
@@ -932,7 +933,7 @@ def flag_tune_and_save_models(gnn):
                 # calculate gradients
                 loss.backward()
                 # update prompts parameters based on gradients sign
-                if config.Prompt.use_ssf_prompt and config.AdvAug.w_updating_strategy  == 'grad':
+                if config.Prompt.use_ssf_prompt and config.AdvAug.w_updating_strategy == 'grad':
                     for name, para in clf.gnn.node_prompts.named_parameters():
                         if name[-1] == 'w':
                             para_data = para.detach() + config.AdvAug.step_size * para.grad.detach()
@@ -962,8 +963,9 @@ def flag_tune_and_save_models(gnn):
             loss_history.append(loss)
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
 
-            # remove prompts
-            clf.gnn.node_prompts = None
+            # remove prompts if needed
+            if not config.AdvAug.keep_prompts:
+                clf.gnn.node_prompts = None
 
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
