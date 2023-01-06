@@ -886,7 +886,17 @@ def flag_tune_and_save_models(gnn):
             batch = batch.to(config.device)
 
             # add prompts
-            if config.Prompt.use_node_wise_prompt:
+            if config.Prompt.use_relu:
+                clf.gnn.node_prompts = nn.ModuleList(
+                    [
+                        src.model.ReLUPrompt(
+                            uniform_init_interval=config.Prompt.uniform_init_interval,
+                            batch_size=config.Tuning.batch_size,
+                        ).to(config.device)
+                        for _ in range(config.Prompt.num)
+                    ]
+                )
+            elif config.Prompt.use_node_wise_prompt:
                 clf.gnn.node_prompts = nn.ModuleList(
                     [
                         src.model.NodeWisePromptPtb(

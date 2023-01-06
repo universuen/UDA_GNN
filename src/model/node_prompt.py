@@ -75,11 +75,12 @@ class NodePromptPtb(nn.Module):
         nn.init.uniform_(self.b, *uniform_init_interval)
 
     def forward(self, x: torch.Tensor, batch: torch.Tensor):
-        '''
-        x: shape = [N, D]
-        batch: shape = [N]
-        '''
         return x + self.b[batch]
+
+
+class ReLUPrompt(NodePromptPtb):
+    def forward(self, x: torch.Tensor, batch: torch.Tensor):
+        return torch.relu(x + self.b[batch])
 
 
 class NodeWisePromptPtb(nn.Module):

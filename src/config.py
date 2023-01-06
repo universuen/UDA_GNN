@@ -233,6 +233,7 @@ class Prompt(_Config):
     num: int = 5
     use_node_wise_prompt: bool = False
     use_ssf_prompt: bool = False
+    use_relu: bool = False
 
 
 class Logger(_Config):
