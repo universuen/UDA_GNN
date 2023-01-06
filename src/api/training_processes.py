@@ -942,19 +942,27 @@ def flag_tune_and_save_models(gnn):
                 # calculate gradients
                 loss.backward()
                 # update prompts parameters based on gradients sign
-                if config.Prompt.use_ssf_prompt and config.AdvAug.w_updating_strategy  == 'grad':
+                if random.random() > config.AdvAug.roulette_ratio:
+                    operator = lambda x1, x2: x1 + x2
+                else:
+                    operator = lambda x1, x2: x1 - x2
+
+                if config.Prompt.use_ssf_prompt and config.AdvAug.w_updating_strategy == 'grad':
                     for name, para in clf.gnn.node_prompts.named_parameters():
                         if name[-1] == 'w':
-                            para_data = para.detach() + config.AdvAug.step_size * para.grad.detach()
+                            para_data = operator(para.detach(), config.AdvAug.step_size * para.grad.detach())
                         elif name[-1] == 'b':
-                            para_data = para.detach() + config.AdvAug.step_size * torch.sign(para.grad.detach())
+                            para_data = operator(
+                                para.detach(),
+                                config.AdvAug.step_size * torch.sign(para.grad.detach())
+                            )
                         else:
                             raise ValueError
                         para.data = para_data.data
                         para.grad[:] = 0
                 else:
                     for i in clf.gnn.node_prompts.parameters():
-                        i_data = i.detach() + config.AdvAug.step_size * torch.sign(i.grad.detach())
+                        i_data = operator(i.detach(), config.AdvAug.step_size * torch.sign(i.grad.detach()))
                         i.data = i_data.data
                         i.grad[:] = 0
                 # calculate loss
