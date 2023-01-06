@@ -983,6 +983,19 @@ def flag_tune_and_save_models(gnn):
             # remove prompts
             clf.gnn.node_prompts = None
 
+            # tune after adv
+            if config.AdvAug.tune_after_adv:
+                optimizer.zero_grad()
+                # calculate loss
+                pred = clf(batch)
+                y = batch.y.view(pred.shape).to(torch.float64)
+                is_valid = y ** 2 > 0  # shape = [N, C]
+                loss_mat = criterion(pred, (y + 1) / 2)  # shape = [N, C]
+                loss_mat = torch.where(is_valid, loss_mat, torch.zeros_like(loss_mat))  # shape = [N, C]
+                loss = torch.sum(loss_mat) / torch.sum(is_valid)
+                loss.backward()
+                optimizer.step()
+
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))

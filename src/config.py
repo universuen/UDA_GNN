@@ -268,6 +268,7 @@ class AdvAug(_Config):
     lr_scheduler_step_size: int = 30
     w_updating_strategy: str = 'sign'
     roulette_ratio: float = 0
+    tune_after_adv: bool = False
 
     assert w_updating_strategy in [
         'sign',
