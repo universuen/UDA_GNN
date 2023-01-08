@@ -52,7 +52,7 @@ class GNN(_GNN, GNNModel):
                     if type(self.node_prompts[0]) in [
                         src.model.NodePromptPtb,
                         src.model.SSFPrompt,
-                        src.model.ReLUPrompt,
+                        src.model.LeakyReLUPrompt,
                     ]:
                         h = self.node_prompts[layer](h, argv[0].batch)
                     else:

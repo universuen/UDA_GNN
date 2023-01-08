@@ -886,10 +886,10 @@ def flag_tune_and_save_models(gnn):
             batch = batch.to(config.device)
 
             # add prompts
-            if config.Prompt.use_relu:
+            if config.Prompt.use_leaky_relu:
                 clf.gnn.node_prompts = nn.ModuleList(
                     [
-                        src.model.ReLUPrompt(
+                        src.model.LeakyReLUPrompt(
                             uniform_init_interval=config.Prompt.uniform_init_interval,
                             batch_size=config.Tuning.batch_size,
                         ).to(config.device)
@@ -981,7 +981,11 @@ def flag_tune_and_save_models(gnn):
             logger.debug(f'epoch: {e}, loss: {loss}, process: {(idx + 1) / len(training_loader)}')
 
             # remove prompts
-            clf.gnn.node_prompts = None
+            if config.AdvAug.keep_non_linear:
+                for i in clf.gnn.node_prompts:
+                    i.remove_ptb()
+            else:
+                clf.gnn.node_prompts = None
 
             # tune after adv
             if config.AdvAug.tune_after_adv:

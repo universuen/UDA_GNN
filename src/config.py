@@ -233,7 +233,7 @@ class Prompt(_Config):
     num: int = 5
     use_node_wise_prompt: bool = False
     use_ssf_prompt: bool = False
-    use_relu: bool = False
+    use_leaky_relu: bool = False
 
 
 class Logger(_Config):
@@ -269,6 +269,7 @@ class AdvAug(_Config):
     w_updating_strategy: str = 'sign'
     roulette_ratio: float = 0
     tune_after_adv: bool = False
+    keep_non_linear: bool = False
 
     assert w_updating_strategy in [
         'sign',

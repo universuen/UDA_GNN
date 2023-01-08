@@ -78,9 +78,15 @@ class NodePromptPtb(nn.Module):
         return x + self.b[batch]
 
 
-class ReLUPrompt(NodePromptPtb):
+class LeakyReLUPrompt(NodePromptPtb):
     def forward(self, x: torch.Tensor, batch: torch.Tensor):
-        return torch.relu(x + self.b[batch])
+        return torch.nn.functional.leaky_relu(x + self.b[batch], 0.2)
+
+    def remove_ptb(self):
+        def new_forward(x: torch.Tensor, _=None):
+            return torch.nn.functional.leaky_relu(x, 0.2)
+
+        self.forward = new_forward
 
 
 class NodeWisePromptPtb(nn.Module):
