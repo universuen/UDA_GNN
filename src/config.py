@@ -270,6 +270,7 @@ class AdvAug(_Config):
     roulette_ratio: float = 0
     tune_after_adv: bool = False
     keep_non_linear: bool = False
+    full_ds_bn: bool = False
 
     assert w_updating_strategy in [
         'sign',

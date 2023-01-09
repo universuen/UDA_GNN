@@ -1000,6 +1000,11 @@ def flag_tune_and_save_models(gnn):
                 loss.backward()
                 optimizer.step()
 
+        if config.AdvAug.full_ds_bn:
+            for idx, batch in enumerate(training_loader):
+                batch = batch.to(config.device)
+                clf(batch)
+
         tr_auc_history.append(eval_chem(clf, tr_loader))
         va_auc_history.append(eval_chem(clf, va_loader))
         te_auc_history.append(eval_chem(clf, te_loader))
